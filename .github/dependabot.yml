@@ -1,0 +1,8 @@
+version: 2
+updates:
+  - package-ecosystem: "npm" # Check for npm dependencies
+    directory: "/" # Check in the root directory (where package.json is)
+    schedule:
+      interval: "weekly" # Check for updates weekly (can be daily, weekly, monthly)
+    # You can add reviewers, assignees, labels etc. here too
+    # open-pull-requests-limit: 10 # Limit the number of open PRs
