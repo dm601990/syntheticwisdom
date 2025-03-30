@@ -384,131 +384,154 @@ export default function HomePage() {
     const articleSummary = encodeURIComponent(article.summary);
     const eventSourceUrl = `/api/getDetails?url=${articleUrl}&title=${articleTitle}&summary=${articleSummary}`;
 
-    // Create and store new EventSource connection
-    const newEventSource = new EventSource(eventSourceUrl);
-    eventSourceRef.current = newEventSource;
+    try {
+        // Create and store new EventSource connection
+        const newEventSource = new EventSource(eventSourceUrl);
+        eventSourceRef.current = newEventSource;
 
-    let accumulatedSummary = ''; // Local accumulator for this specific fetch
-    let completeSummary = ''; // To store the complete summary for caching
+        let accumulatedSummary = ''; // Local accumulator for this specific fetch
+        let completeSummary = ''; // To store the complete summary for caching
 
-    newEventSource.onopen = () => {
-        console.log("Frontend: EventSource connection opened.");
-        setIsDetailLoading(true); // Ensure loading is true when open
-    };
+        newEventSource.onopen = () => {
+            console.log("Frontend: EventSource connection opened.");
+            setIsDetailLoading(true); // Ensure loading is true when open
+        };
 
-    newEventSource.onmessage = (event) => {
-        try {
-            // Log only on development
-            if (process.env.NODE_ENV === 'development') {
-                console.log("Frontend: EventSource message received");
-            }
-            
-            const data = JSON.parse(event.data);
+        newEventSource.onmessage = (event) => {
+            try {
+                // Log only on development
+                if (process.env.NODE_ENV === 'development') {
+                    console.log("Frontend: EventSource message received");
+                }
+                
+                const data = JSON.parse(event.data);
 
-            if (data.error) {
-                console.error('Stream Error Message:', data.error, data.details);
-                setError(`Summary generation failed: ${data.error}`); // Set error
-                closeEventSource(); // Close on error
-                setIsDetailLoading(false);
-                return;
-            }
-            
-            // Handle loading signal and thinking phase
-            if (data.phase === "THINKING") {
-                const textChunk = data.chunk.replace(/\\n/g, '\n');
+                if (data.error) {
+                    console.error('Stream Error Message:', data.error, data.details);
+                    setError(`Summary generation failed: ${data.error}`); // Set error
+                    closeEventSource(); // Close on error
+                    setIsDetailLoading(false);
+                    return;
+                }
                 
-                // Show thinking indicator and accumulate text
-                setDetailedContent(prev => ({
-                    ...prev,
-                    aiSummary: prev.aiSummary + textChunk
-                }));
-                
-                // Keep loading indicator on
-                setIsDetailLoading(true);
-                return;
-            }
-            
-            // Handle clear content signal
-            if (data.action === "CLEAR_ALL_CONTENT") {
-                console.log("Frontend: Clearing content buffer");
-                
-                // Reset all text to empty
-                setDetailedContent({ 
-                    aiSummary: '', 
-                    bulletSummary: null, 
-                    keywords: article.keywords || [] 
-                });
-                
-                // Reset accumulators
-                completeSummary = ''; 
-                accumulatedSummary = '';
-                return;
-            }
-
-            // Append text chunk 
-            if (data.chunk) {
-                const textChunk = data.chunk.replace(/\\n/g, '\n');
-                
-                // Only display and accumulate if in REAL_CONTENT phase
-                if (data.phase === "REAL_CONTENT") {
-                    // Add to complete summary for caching
-                    completeSummary += textChunk;
-                    accumulatedSummary += textChunk;
+                // Handle loading signal and thinking phase
+                if (data.phase === "THINKING") {
+                    const textChunk = data.chunk.replace(/\\n/g, '\n');
                     
-                    // Update state with real content
+                    // Show thinking indicator and accumulate text
                     setDetailedContent(prev => ({
                         ...prev,
                         aiSummary: prev.aiSummary + textChunk
                     }));
                     
-                    // Turn off loading indicator while showing real content
-                    setIsDetailLoading(false);
+                    // Keep loading indicator on
+                    setIsDetailLoading(true);
+                    return;
                 }
-            }
+                
+                // Handle clear content signal
+                if (data.action === "CLEAR_ALL_CONTENT") {
+                    console.log("Frontend: Clearing content buffer");
+                    
+                    // Reset all text to empty
+                    setDetailedContent({ 
+                        aiSummary: '', 
+                        bulletSummary: null, 
+                        keywords: article.keywords || [] 
+                    });
+                    
+                    // Reset accumulators
+                    completeSummary = ''; 
+                    accumulatedSummary = '';
+                    return;
+                }
 
-            // Handle final message
-            if (data.done) {
-                console.log("Frontend: Stream finished message received.");
-                
-                // Only cache real content
-                if (completeSummary.length > 0) {
-                    // Cache the complete result
-                    const cacheEntry = {
-                        aiSummary: completeSummary, 
-                        bulletSummary: null,
-                        keywords: article.keywords || []
-                    };
+                // Append text chunk 
+                if (data.chunk) {
+                    const textChunk = data.chunk.replace(/\\n/g, '\n');
                     
-                    // Add to cache
-                    summaryCache.current[cacheKey] = cacheEntry;
-                    saveCache(); // Save to localStorage
-                    
-                    console.log("Frontend: Cached summary for", article.title);
+                    // Only display and accumulate if in REAL_CONTENT phase
+                    if (data.phase === "REAL_CONTENT") {
+                        // Add to complete summary for caching
+                        completeSummary += textChunk;
+                        accumulatedSummary += textChunk;
+                        
+                        // Update state with real content
+                        setDetailedContent(prev => ({
+                            ...prev,
+                            aiSummary: prev.aiSummary + textChunk
+                        }));
+                        
+                        // Turn off loading indicator while showing real content
+                        setIsDetailLoading(false);
+                    }
                 }
-                
-                // Close connection
+
+                // Handle final message
+                if (data.done) {
+                    console.log("Frontend: Stream finished message received.");
+                    
+                    // Only cache real content
+                    if (completeSummary.length > 0) {
+                        // Cache the complete result
+                        const cacheEntry = {
+                            aiSummary: completeSummary, 
+                            bulletSummary: null,
+                            keywords: article.keywords || []
+                        };
+                        
+                        // Add to cache
+                        summaryCache.current[cacheKey] = cacheEntry;
+                        saveCache(); // Save to localStorage
+                        
+                        console.log("Frontend: Cached summary for", article.title);
+                    }
+                    
+                    // Close connection
+                    closeEventSource();
+                    setIsDetailLoading(false); // Stop loading indicator
+                }
+
+            } catch (e) {
+                console.error("Frontend: Failed to parse message data:", e);
+                // Don't necessarily error out the whole page, maybe just stop loading
                 closeEventSource();
-                setIsDetailLoading(false); // Stop loading indicator
+                setIsDetailLoading(false);
+                
+                // Set a fallback summary to prevent UI issues
+                if (!detailedContent.aiSummary) {
+                    setDetailedContent(prev => ({
+                        ...prev,
+                        aiSummary: "Unable to load summary. Please try again later."
+                    }));
+                }
             }
+        };
 
-        } catch (e) {
-            console.error("Frontend: Failed to parse message data:", e);
-            // Don't necessarily error out the whole page, maybe just stop loading
-            closeEventSource();
-            setIsDetailLoading(false);
-        }
-    };
-
-    newEventSource.onerror = (err) => {
-        console.error("EventSource failed:", err);
-        if (eventSourceRef.current) { // Avoid error if manually closed
-             setError("Connection error loading details.");
-             closeEventSource();
-             setIsDetailLoading(false);
-        }
-    };
-
-  }, [setError, setIsDetailLoading, setDetailedContent, saveCache]); // Dependencies
+        newEventSource.onerror = (err) => {
+            console.error("EventSource failed:", err);
+            if (eventSourceRef.current) { // Avoid error if manually closed
+                setError("Connection error loading details.");
+                closeEventSource();
+                setIsDetailLoading(false);
+                
+                // Set a fallback summary to prevent UI issues
+                setDetailedContent(prev => ({
+                    ...prev,
+                    aiSummary: prev.aiSummary || "Unable to load summary due to connection error."
+                }));
+            }
+        };
+    } catch (e) {
+        console.error("Failed to create EventSource:", e);
+        setError("Failed to establish connection for summary.");
+        setIsDetailLoading(false);
+        setDetailedContent(prev => ({
+            ...prev,
+            aiSummary: "Summary generation failed. Please try again later."
+        }));
+    }
+}, [setError, setIsDetailLoading, setDetailedContent, saveCache]);
 
   return (
     <div style={pageStyle}>
