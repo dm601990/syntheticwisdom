@@ -124,7 +124,7 @@ const footerStyle = {
 };
 
 // Initial number of articles to show
-const INITIAL_VISIBLE_COUNT = 6;
+const INITIAL_VISIBLE_COUNT = 8;
 // Number of articles to add when loading more
 const LOAD_MORE_INCREMENT = 6;
 

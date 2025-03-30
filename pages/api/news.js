@@ -395,7 +395,7 @@ export default async function handler(req, res) {
   // Get query parameters from request
   const topic = req.query.topic || 'general';
   const page = parseInt(req.query.page) || 1; // Default to page 1
-  const pageSize = parseInt(req.query.pageSize) || 8; // Default to 8 articles per page
+  const pageSize = parseInt(req.query.pageSize) || 20; // Changed from 8 to 20 articles per page
   
   // Define search queries for different AI topics
   const topicQueries = {
