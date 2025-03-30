@@ -1,0 +1,111 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  cross-browser-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+        
+      - name: Run Cross-Browser Tests
+        run: npm run test:browsers
+        
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+  
+  responsive-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+        
+      - name: Run Responsive Tests
+        run: npm run test:responsive
+        
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: responsive-test-report
+          path: playwright-report/
+          retention-days: 30
+  
+  load-tests:
+    runs-on: ubuntu-latest
+    
+    # Load tests require the app to be running
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Install k6
+        run: |
+          curl -L https://github.com/grafana/k6/releases/download/v0.45.0/k6-v0.45.0-linux-amd64.tar.gz | tar xz
+          sudo mv k6-v0.45.0-linux-amd64/k6 /usr/local/bin
+        
+      - name: Build App
+        run: npm run build
+        
+      - name: Start App in Background
+        run: |
+          npm run start &
+          sleep 15  # Give the app time to start
+        
+      - name: Create Results Directory
+        run: mkdir -p results
+        
+      - name: Run Load Tests (Limited in CI)
+        run: |
+          # Run a reduced version of load tests in CI to avoid overloading GitHub Actions
+          k6 run tests/load-testing/load-test.js --out json=results/load-test-results.json -e CI=true --vus 5 --duration 30s
+        
+      - name: Upload Load Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: load-test-results
+          path: results/
+          retention-days: 30 

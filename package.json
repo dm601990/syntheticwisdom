@@ -1,0 +1,34 @@
+{
+  "name": "3d-environment",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test:browsers": "playwright test tests/cross-browser/",
+    "test:responsive": "playwright test tests/responsive/",
+    "test:load": "k6 run tests/load-testing/load-test.js --out json=results/load-test-results.json",
+    "test:load:stress": "k6 run tests/load-testing/load-test.js --out json=results/stress-test-results.json -s scenarios.constant_load=false,scenarios.spike_test=false",
+    "test:load:spike": "k6 run tests/load-testing/load-test.js --out json=results/spike-test-results.json -s scenarios.constant_load=false,scenarios.ramp_load=false",
+    "test:all": "npm run test:browsers && npm run test:responsive && npm run test:load",
+    "install:browsers": "playwright install"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "3D environment using Next.js and React Three Fiber",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "framer-motion": "^12.6.2",
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.1",
+    "k6": "^0.0.0"
+  }
+}
