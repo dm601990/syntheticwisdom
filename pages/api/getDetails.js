@@ -17,15 +17,25 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default async function handler(req, res) {
   if (!model) {
-    res.writeHead(503, { 'Content-Type': 'application/json' }); // Use writeHead before headers
-    res.end(JSON.stringify({ error: 'AI Service not available.' }));
+    // Safe fallback for when model isn't initialized
+    console.error("API Route /getDetails ERROR: AI Model not initialized");
+    res.writeHead(503, { 'Content-Type': 'text/event-stream' });
+    res.write(`data: ${JSON.stringify({ 
+      error: 'AI Service not available.', 
+      details: 'Model initialization failed'
+    })}\n\n`);
+    res.end();
     return;
   }
 
   const { url, title, summary } = req.query;
   if (!url || !title || !summary) {
-    res.writeHead(400, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Missing required article data.' }));
+    res.writeHead(400, { 'Content-Type': 'text/event-stream' });
+    res.write(`data: ${JSON.stringify({ 
+      error: 'Missing required article data.', 
+      details: 'URL, title, or summary is missing' 
+    })}\n\n`);
+    res.end();
     return;
   }
 
@@ -36,8 +46,10 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no'); // Prevent nginx buffering
-  res.flushHeaders(); // Send headers immediately
-  // --- End Headers ---
+  
+  // Send an initial keepalive comment to establish the connection
+  res.write(': keepalive\n\n');
+  res.flushHeaders();
 
   try {
     // Start with a thinking indicator
@@ -93,33 +105,52 @@ export default async function handler(req, res) {
     // Small delay to ensure frontend has processed the clear command
     await delay(100);
     
-    // Use the streaming API to get content in real-time
-    const streamResult = await model.generateContentStream(prompt);
-    
-    console.log(`Gemini stream started for "${title}", sending chunks as they arrive...`);
-    
-    let fullText = "";
-    
-    // Process chunks as they arrive from the stream
-    for await (const chunk of streamResult.stream) {
-      const chunkText = chunk.text();
-      if (chunkText) {
-        fullText += chunkText;
-        
-        // Send each chunk as it arrives with minimal processing
-        res.write(`data: ${JSON.stringify({ 
-          chunk: chunkText,
-          phase: "REAL_CONTENT"
-        })}\n\n`);
-        
-        // Check if res.flush exists before calling it
-        if (typeof res.flush === 'function') {
-          res.flush();
+    try {
+      // Use the streaming API to get content in real-time
+      const streamResult = await model.generateContentStream(prompt);
+      
+      console.log(`Gemini stream started for "${title}", sending chunks as they arrive...`);
+      
+      let fullText = "";
+      
+      // Process chunks as they arrive from the stream
+      for await (const chunk of streamResult.stream) {
+        const chunkText = chunk.text();
+        if (chunkText) {
+          fullText += chunkText;
+          
+          // Send each chunk as it arrives with minimal processing
+          res.write(`data: ${JSON.stringify({ 
+            chunk: chunkText,
+            phase: "REAL_CONTENT"
+          })}\n\n`);
+          
+          // Check if res.flush exists before calling it
+          if (typeof res.flush === 'function') {
+            res.flush();
+          }
         }
       }
+      
+      console.log(`Streaming finished for "${title}", total length: ${fullText.length} chars`);
+    } catch (streamError) {
+      console.error(`Gemini Stream Error for "${title}":`, streamError);
+      
+      // Send fallback content when streaming fails
+      const fallbackSummary = `Unable to generate a detailed summary for this article due to technical limitations. 
+      
+The article titled "${title}" appears to cover important topics related to AI development and research. For more information, please read the full article at the original source.`;
+      
+      // Send the fallback summary as normal content
+      res.write(`data: ${JSON.stringify({ 
+        chunk: fallbackSummary,
+        phase: "REAL_CONTENT"
+      })}\n\n`);
+      
+      if (typeof res.flush === 'function') {
+        res.flush();
+      }
     }
-    
-    console.log(`Streaming finished for "${title}", total length: ${fullText.length} chars`);
 
     // Send completion signal
     res.write(`data: ${JSON.stringify({ 
@@ -137,14 +168,16 @@ export default async function handler(req, res) {
     try {
       res.write(`data: ${JSON.stringify({ 
         error: 'Failed to generate summary stream.', 
-        details: error.message
+        details: error.message || 'Unknown error'
       })}\n\n`);
       
       // Check if res.flush exists before calling it
       if (typeof res.flush === 'function') {
         res.flush();
       }
-    } catch (writeError) { /* Ignore */ }
+    } catch (writeError) { 
+      console.error(`Failed to write error response:`, writeError);
+    }
   } finally {
     // --- End the response stream ---
     res.end();
