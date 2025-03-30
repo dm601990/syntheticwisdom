@@ -22,6 +22,7 @@
   "description": "3D environment using Next.js and React Three Fiber",
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
+    "@vercel/analytics": "^1.5.0",
     "framer-motion": "^12.6.2",
     "next": "^14.0.0",
     "react": "^18.0.0",
@@ -29,6 +30,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.51.1",
-    "k6": "^0.0.0"
+    "@types/node": "^22.13.14",
+    "@types/react": "^19.0.12",
+    "k6": "^0.0.0",
+    "typescript": "^5.8.2"
   }
 }
