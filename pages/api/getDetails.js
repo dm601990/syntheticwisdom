@@ -45,7 +45,11 @@ export default async function handler(req, res) {
       chunk: "Analyzing...",
       phase: "THINKING"
     })}\n\n`);
-    res.flush();
+    
+    // Check if res.flush exists before calling it
+    if (typeof res.flush === 'function') {
+      res.flush();
+    }
     
     // Add thinking dots with small delays
     for (let i = 0; i < 3; i++) {
@@ -54,7 +58,11 @@ export default async function handler(req, res) {
         chunk: ".",
         phase: "THINKING"
       })}\n\n`);
-      res.flush();
+      
+      // Check if res.flush exists before calling it
+      if (typeof res.flush === 'function') {
+        res.flush();
+      }
     }
     
     // Generate the actual content with streaming - using generateContentStream
@@ -76,7 +84,11 @@ export default async function handler(req, res) {
       action: "CLEAR_ALL_CONTENT",
       phase: "CONTENT_START"
     })}\n\n`);
-    res.flush();
+    
+    // Check if res.flush exists before calling it
+    if (typeof res.flush === 'function') {
+      res.flush();
+    }
     
     // Small delay to ensure frontend has processed the clear command
     await delay(100);
@@ -99,7 +111,11 @@ export default async function handler(req, res) {
           chunk: chunkText,
           phase: "REAL_CONTENT"
         })}\n\n`);
-        res.flush();
+        
+        // Check if res.flush exists before calling it
+        if (typeof res.flush === 'function') {
+          res.flush();
+        }
       }
     }
     
@@ -110,7 +126,11 @@ export default async function handler(req, res) {
       phase: "CONTENT_COMPLETE",
       done: true
     })}\n\n`);
-    res.flush();
+    
+    // Check if res.flush exists before calling it
+    if (typeof res.flush === 'function') {
+      res.flush();
+    }
 
   } catch (error) {
     console.error(`API Route /getDetails STREAM Error for "${title}":`, error);
@@ -119,7 +139,11 @@ export default async function handler(req, res) {
         error: 'Failed to generate summary stream.', 
         details: error.message
       })}\n\n`);
-      res.flush();
+      
+      // Check if res.flush exists before calling it
+      if (typeof res.flush === 'function') {
+        res.flush();
+      }
     } catch (writeError) { /* Ignore */ }
   } finally {
     // --- End the response stream ---

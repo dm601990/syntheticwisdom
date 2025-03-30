@@ -250,6 +250,7 @@ export function NewsCard({
   // Extract domain and create favicon URL
   const domain = getDomainFromUrl(url);
   const faviconUrl = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
+  const fallbackIconUrl = '/images/default-favicon.svg'; // Use SVG instead of PNG
   
   return (
     // Use framer-motion for animations
@@ -280,7 +281,12 @@ export function NewsCard({
                   width={16}
                   height={16}
                   style={logoIconStyle}
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  onError={(e) => { 
+                    // When favicon fails to load, try the fallback image instead
+                    const imgElement = e.target as HTMLImageElement;
+                    imgElement.src = fallbackIconUrl;
+                    imgElement.onerror = () => { imgElement.style.display = 'none'; }; // Hide if fallback also fails
+                  }}
                 />
               )}
               <span style={{ flexShrink: 0 }}>{source}</span>
