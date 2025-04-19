@@ -6,9 +6,9 @@ import { usePathname } from 'next/navigation';
 
 // Define props interface
 interface HeaderProps {
-  categories: string[];
-  activeCategory: string;
-  setActiveCategory: React.Dispatch<React.SetStateAction<string>>;
+  categories?: string[];
+  activeCategory?: string;
+  setActiveCategory?: React.Dispatch<React.SetStateAction<string>>;
 }
 
 // Navigation styles
@@ -139,7 +139,7 @@ const Header: React.FC<HeaderProps> = ({ categories, activeCategory, setActiveCa
       </nav>
       
       {/* Category Navigation (Only shown on AI News page) */}
-      {pathname === '/' && (
+      {pathname === '/' && categories && activeCategory && setActiveCategory && (
         <nav style={categoryNavStyle}>
           {categories.map((category) => (
             <button

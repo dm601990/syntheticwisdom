@@ -208,7 +208,7 @@ export default function HomePage() {
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorData.details || errorMsg;
-        } catch (_e) { /* Ignore parsing error if response wasn't JSON */ }
+        } catch { /* Ignore parsing error if response wasn't JSON */ }
         throw new Error(errorMsg);
       }
       const data = await response.json();
@@ -253,7 +253,7 @@ export default function HomePage() {
       
       try {
         return new Date(dateB).getTime() - new Date(dateA).getTime();
-      } catch (_e) {
+      } catch {
         // Fallback to string comparison if date conversion fails
         return dateB.localeCompare(dateA);
       }
@@ -287,7 +287,7 @@ export default function HomePage() {
   // Filter and process articles based on category and search term
   const filteredArticles = useMemo(() => {
     // Start with articles that have a valid category (not null)
-    let validArticles = articles.filter(article => article.category);
+    const validArticles = articles.filter(article => article.category);
     
     // Filter by the active category
     let results = validArticles.filter(article => article.category === activeCategory);
@@ -621,7 +621,6 @@ export default function HomePage() {
                       title={article.title}
                       summary={article.summary}
                       category={article.category}
-                      energy={article.energy}
                       onExpand={handleExpand}
                       date={article.publicationDate || article.date}
                       source={article.sourceName || article.source}

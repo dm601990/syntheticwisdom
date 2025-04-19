@@ -6,8 +6,6 @@ import Image from 'next/image';
 import { 
   standardCardStyle, 
   standardCardContentStyle, 
-  standardCardTitleStyle, 
-  standardCardDescriptionStyle,
   standardCardFooterStyle,
   standardCardTagStyle
 } from '../styles/styles';
@@ -18,7 +16,6 @@ interface NewsCardProps {
   title: string;
   summary?: string;
   category: string | null;
-  energy: number;
   onExpand: (id: string) => void;
   date?: string;
   source?: string;
@@ -197,7 +194,6 @@ export function NewsCard({
   title, 
   summary, 
   category, 
-  energy, 
   onExpand,
   date,
   source,

@@ -114,16 +114,6 @@ interface SillinessCardProps {
 
 // Restore the specific SillinessCard component implementation
 const SillinessCard: React.FC<SillinessCardProps> = ({ item, onTagClick, selectedTags }) => {
-  // Format date function (keep as it might be used elsewhere or restored later)
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return dateString; // Return original string if invalid
-    }
-    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
-  };
-
   // Original styles for SillinessCard
   const cardStyle = {
     backgroundColor: '#252830',

@@ -236,26 +236,6 @@ export default function ToolkitPage() {
     }
   };
 
-  // Get all unique tags from toolkit items
-  const allTags = useMemo(() => {
-    const tags = new Set<string>();
-    toolkitItems.forEach(item => {
-      item.tags.forEach(tag => tags.add(tag));
-    });
-    return Array.from(tags).sort();
-  }, []);
-  
-  // Count occurrences of each tag
-  const tagCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    toolkitItems.forEach(item => {
-      item.tags.forEach(tag => {
-        counts[tag] = (counts[tag] || 0) + 1;
-      });
-    });
-    return counts;
-  }, []);
-
   // Filter toolkit items based on search term, selected type, and selected tags
   const filteredTools = useMemo(() => {
     let results = toolkitItems;
@@ -272,395 +252,373 @@ export default function ToolkitPage() {
       );
     }
     
-    // Filter by search term
-    if (debouncedSearchTerm.trim()) {
-      const lowerCaseSearchTerm = debouncedSearchTerm.toLowerCase();
-      results = results.filter(item => 
-        item.name.toLowerCase().includes(lowerCaseSearchTerm) || 
-        item.description.toLowerCase().includes(lowerCaseSearchTerm) ||
-        item.tags.some(tag => tag.toLowerCase().includes(lowerCaseSearchTerm))
+    // Filter by debounced search term
+    if (debouncedSearchTerm) {
+      const searchTermLower = debouncedSearchTerm.toLowerCase();
+      results = results.filter(item =>
+        item.name.toLowerCase().includes(searchTermLower) ||
+        item.description.toLowerCase().includes(searchTermLower)
       );
+    }
+
+    // Sort results: prioritize exact name matches, then start-of-name matches, then others
+    if (debouncedSearchTerm) {
+      const searchTermLower = debouncedSearchTerm.toLowerCase();
+      results.sort((a, b) => {
+        const aNameLower = a.name.toLowerCase();
+        const bNameLower = b.name.toLowerCase();
+        
+        const aExactMatch = aNameLower === searchTermLower;
+        const bExactMatch = bNameLower === searchTermLower;
+        const aStartsWith = aNameLower.startsWith(searchTermLower);
+        const bStartsWith = bNameLower.startsWith(searchTermLower);
+
+        if (aExactMatch && !bExactMatch) return -1;
+        if (!aExactMatch && bExactMatch) return 1;
+        if (aStartsWith && !bStartsWith) return -1;
+        if (!aStartsWith && bStartsWith) return 1;
+        
+        return aNameLower.localeCompare(bNameLower);
+      });
     }
     
     return results;
   }, [debouncedSearchTerm, selectedType, selectedTags]);
 
-  // Handle keyboard events
+  // Collect unique tags from the filtered items
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    filteredTools.forEach(item => {
+      item.tags.forEach(tag => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [filteredTools]);
+
+  // Check if any filters are active
+  const filtersActive = selectedType !== null || selectedTags.length > 0 || searchTerm !== '';
+
+  // Handle ESC key press to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showModal) {
+      if (e.key === 'Escape') {
         closeModal();
       }
     };
     
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    if (showModal) {
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      window.removeEventListener('keydown', handleKeyDown);
+    }
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [showModal]);
+
+  // Scroll lock when modal is open
+  useEffect(() => {
+    if (showModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [showModal]);
+
+  // Reset search term if type or tags change
+  useEffect(() => {
+    // Logic here if needed to reset search on filter changes
+  }, [selectedType, selectedTags]);
+
+  // Enhanced card animation variants
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.3 } }
+  };
 
   return (
     <div style={pageStyle}>
-      <Header categories={[]} activeCategory="" setActiveCategory={() => {}} />
-      
-      {/* Controls Container */}
+      <Header />
       <div style={controlsContainerStyle}>
-        {/* Remove Filter Buttons */}
-        
-        {/* Search Input */}
         <input
-          type="search"
-          placeholder="Search tools and models..."
+          type="text"
+          placeholder="Search tools, models, platforms..."
           value={searchTerm}
           onChange={handleSearchChange}
           style={searchInputStyle}
-          aria-label="Search for AI tools and models"
-          onFocus={(e) => {
-            e.currentTarget.style.boxShadow = '0 3px 12px rgba(42, 157, 143, 0.25)';
-            e.currentTarget.style.borderColor = '#2a9d8f';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-            e.currentTarget.style.borderColor = '#333';
-          }}
         />
-        
-        {/* Type Filter Buttons */}
         <div style={buttonContainerStyle}>
           {Object.entries(typeDefinitions).map(([type, { color, label }]) => (
-            <button
-              key={type}
-              onClick={() => handleTypeFilterChange(type)}
+            <button 
+              key={type} 
+              onClick={() => handleTypeFilterChange(type)} 
               style={typeButtonStyle(selectedType === type, color)}
               aria-pressed={selectedType === type}
             >
-              {label} ({typeCounts[type as keyof typeof typeCounts]})
+              <span style={{ 
+                width: '10px', 
+                height: '10px', 
+                backgroundColor: color, 
+                borderRadius: '50%',
+                display: 'inline-block'
+              }}></span>
+              {label} ({typeCounts[type]})
             </button>
           ))}
-          
-          {selectedType && (
-            <button
-              onClick={clearAllFilters}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                border: '1px solid #444',
-                background: 'transparent',
-                color: '#aaa',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-              }}
+        </div>
+        <div style={buttonContainerStyle}>
+          {availableTags.map(tag => (
+            <button 
+              key={tag} 
+              onClick={() => handleTagClick(tag)} 
+              style={tagButtonStyle(selectedTags.includes(tag))}
+              aria-pressed={selectedTags.includes(tag)}
             >
-              Clear Filter
+              #{tag}
             </button>
-          )}
+          ))}
         </div>
+        {filtersActive && (
+          <button
+            onClick={clearAllFilters}
+            style={clearFilterButtonStyle}
+            aria-label="Clear all filters"
+          >
+            Clear All Filters
+          </button>
+        )}
       </div>
-      
-      {/* Results summary if filtering is active */}
-      {(selectedType || selectedTags.length > 0 || debouncedSearchTerm) && (
-        <div style={{ textAlign: 'center', marginBottom: '20px', color: '#aaa', fontSize: '0.9rem' }}>
-          Showing {filteredTools.length} {filteredTools.length === 1 ? 'item' : 'items'}
-          {debouncedSearchTerm ? ` matching "${debouncedSearchTerm}"` : ''}
-          {selectedType ? ` in category "${selectedType}"` : ''}
-          {selectedTags.length > 0 ? ` with tags ${selectedTags.map(t => `"${t}"`).join(', ')}` : ''}
-        </div>
-      )}
-      
-      {/* Toolkit Grid */}
-      <div style={gridContainerStyle}>
-        <AnimatePresence>
-          {filteredTools.map(item => (
+      <AnimatePresence>
+        <motion.div 
+          style={gridContainerStyle}
+          layout // Animate layout changes
+        >
+          {filteredTools.map((item) => (
             <motion.div
               key={item.id}
-              layout
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              variants={cardVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              layout // Animate position changes
             >
-              <ToolkitCard item={item} onTagClick={handleTagClick} onViewDetails={openItemDetails} />
+              <ToolkitCard 
+                item={item} 
+                onTagClick={handleTagClick} 
+                onViewDetails={openItemDetails}
+                selectedTags={selectedTags}
+              />
             </motion.div>
           ))}
-        </AnimatePresence>
-      </div>
-      
-      {/* No results message */}
-      {filteredTools.length === 0 && (
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }}
-          style={{
-            textAlign: 'center',
-            padding: '40px',
-            color: '#888'
-          }}
-        >
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>No tools or models found</h3>
-          <p>Try adjusting your search or filters.</p>
         </motion.div>
+      </AnimatePresence>
+      {filteredTools.length === 0 && (
+        <p style={noResultsStyle}>No items found matching your criteria.</p>
       )}
-      
-      {/* Footer */}
-      <footer style={footerStyle}>
-        <span>
-          © {new Date().getFullYear()} Synthetic Wisdom. All rights reserved.
-        </span>
-        {/* Ko-fi Link */}
-        <a
-          href="https://ko-fi.com/syntheticwisdom"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={kofiButtonStyle}
-          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#E04A48'}
-          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FF5E5B'}
-        >
-          Support Us on Ko-fi ❤️
-        </a>
-      </footer>
-      
-      {/* Item Detail Modal */}
-      {showModal && selectedItem && (
-        <div 
-          style={modalOverlayStyle} 
-          onClick={handleModalClick}
-          aria-modal="true"
-          role="dialog"
-        >
-          <div style={modalContentStyle} ref={modalRef}>
-            <button
-              style={closeButtonStyle}
-              onClick={closeModal}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              aria-label="Close details"
+      <AnimatePresence>
+        {showModal && selectedItem && (
+          <motion.div
+            style={modalOverlayStyle}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={handleModalClick}
+          >
+            <motion.div
+              ref={modalRef}
+              style={modalContentStyle}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.3 }}
             >
-              ✕
-            </button>
-            
-            <ItemDetailView item={selectedItem} onTagClick={handleTagClick} />
-          </div>
-        </div>
-      )}
+              <button 
+                onClick={closeModal} 
+                style={closeButtonStyle} 
+                aria-label="Close details"
+              >
+                &times;
+              </button>
+              <ItemDetailView item={selectedItem} onTagClick={handleTagClick} selectedTags={selectedTags} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <footer style={footerStyle}>
+        <p>&copy; 2024 Synthetic Wisdom</p>
+        <p>
+          Discover something useful? Consider supporting the project.
+          <a 
+            href="https://ko-fi.com/syntheticwisdom" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            style={kofiButtonStyle} 
+            aria-label="Support Synthetic Wisdom on Ko-fi"
+          >
+            Support on Ko-fi
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
 
-// Toolkit Card Component
+// Helper function to generate consistent tag styles
+const tagButtonStyle = (isActive: boolean) => ({
+  padding: '4px 10px',
+  borderRadius: '6px',
+  border: `1px solid ${isActive ? '#888' : '#444'}`,
+  background: isActive ? '#555' : 'rgba(255, 255, 255, 0.05)', // Slightly visible background
+  color: isActive ? '#eee' : '#aaa',
+  cursor: 'pointer',
+  fontSize: '0.85rem',
+  transition: 'all 0.2s ease',
+  boxShadow: isActive ? '0 1px 4px rgba(0, 0, 0, 0.2)' : 'none',
+});
+
+// Clear filter button style
+const clearFilterButtonStyle = {
+  marginTop: '15px',
+  padding: '6px 14px',
+  borderRadius: '8px',
+  border: '1px solid #777',
+  background: 'rgba(255, 255, 255, 0.05)',
+  color: '#bbb',
+  cursor: 'pointer',
+  fontSize: '0.9rem',
+  transition: 'all 0.2s ease',
+};
+
+// Style for no results message
+const noResultsStyle = {
+  textAlign: 'center' as const,
+  marginTop: '40px',
+  color: '#888',
+  fontSize: '1rem',
+};
+
+// Props definition for ToolkitCard
 interface ToolkitCardProps {
   item: ToolkitItem;
   onTagClick: (tag: string) => void;
   onViewDetails: (item: ToolkitItem) => void;
+  selectedTags: string[];
 }
 
-const ToolkitCard: React.FC<ToolkitCardProps> = ({ item, onTagClick, onViewDetails }) => {
-  // Function to get the corresponding icon for type
+// The ToolkitCard component
+const ToolkitCard: React.FC<ToolkitCardProps> = ({ item, onTagClick, onViewDetails, selectedTags }) => {
+  // Helper to get type-specific icon
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'Model':
-        return '🧠';
-      case 'Tool':
-        return '🛠️';
-      case 'Platform':
-        return '🏢';
-      default:
-        return '🔧';
+      case 'Model': return '🧠';
+      case 'Tool': return '🛠️';
+      case 'Platform': return '☁️';
+      default: return '';
     }
   };
   
-  // Function to determine border color based on type
+  // Helper to get border color based on type
   const getBorderColor = (type: string) => {
-    return typeDefinitions[type as keyof typeof typeDefinitions]?.color || '#ccc';
+    return typeDefinitions[type as keyof typeof typeDefinitions]?.color || '#555';
   };
 
-  const titleStyle = {
-    fontSize: '1.1rem',
+  const cardStyle = {
+    background: '#1f2227',
+    borderRadius: '12px',
+    padding: '24px',
+    border: `1px solid ${getBorderColor(item.type)}`,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    justifyContent: 'space-between',
+    height: '100%', // Ensure card takes full height of grid row
+    transition: 'all 0.2s ease',
+    cursor: 'pointer',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    position: 'relative' as const, // Needed for absolute positioning of type icon
+    overflow: 'hidden', // Ensure content doesn't overflow
+  };
+
+  const cardHeaderStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '14px',
+    gap: '10px',
+  };
+
+  const cardTitleStyle = {
+    fontSize: '1.2rem',
     fontWeight: '600',
-    marginTop: '4px',
-    marginBottom: '8px',
-    color: '#e0e0e0',
-    lineHeight: '1.3',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box' as const,
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical' as const,
-    maxHeight: '2.6rem', // 2 lines * 1.3 line-height
+    color: '#eee',
+    marginBottom: '0',
+    lineHeight: 1.3,
   };
-  
+
+  const typeIconStyle = {
+    fontSize: '1.5rem',
+    marginTop: '-4px', // Align better with title
+  };
+
   const descriptionStyle = {
-    fontSize: '0.9rem',
-    color: '#aaa',
-    lineHeight: '1.5',
-    flex: '1',
-    marginBottom: '16px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box' as const,
-    WebkitLineClamp: 3,
-    WebkitBoxOrient: 'vertical' as const,
-  };
-
-  // Style for Developer info
-  const developerStyle = {
-    fontSize: '0.8rem',
-    color: '#888',
-    marginBottom: '8px',
-    marginTop: '4px',
-  };
-
-  // Style for Key Features section
-  const featuresContainerStyle = {
-    marginTop: '12px',
-    marginBottom: '8px',
-  };
-
-  const featuresTitleStyle = {
-    fontSize: '0.85rem',
-    fontWeight: '600' as const,
+    fontSize: '0.95rem',
     color: '#bbb',
-    marginBottom: '6px',
+    lineHeight: 1.6,
+    flexGrow: 1, // Allow description to take up available space
+    marginBottom: '18px',
   };
 
-  const featureTagStyle = {
-    display: 'inline-block',
-    padding: '2px 6px',
-    borderRadius: '4px',
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    color: '#aaa',
-    fontSize: '0.75rem',
-    marginRight: '4px',
-    marginBottom: '4px',
+  const tagsContainerStyle = {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '8px',
+    marginTop: 'auto', // Push tags to the bottom if space allows
+    paddingTop: '10px', // Add padding above tags
   };
 
   return (
-    <div 
-      style={{
-        backgroundColor: '#252830',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        height: '100%',
-        position: 'relative',
-        border: '1px solid #34363f',
-        borderLeft: `3px solid ${getBorderColor(item.type)}`,
-        transition: 'all 0.2s ease',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
-        cursor: 'pointer',
+    <motion.div 
+      style={cardStyle} 
+      onClick={() => onViewDetails(item)} // Trigger modal on card click
+      whileHover={{ 
+        scale: 1.03, 
+        boxShadow: `0 6px 20px rgba(0, 0, 0, 0.15), 0 0 15px ${getBorderColor(item.type)}30`,
+        borderColor: getBorderColor(item.type) // Enhance border on hover
       }}
-      onClick={() => onViewDetails(item)}
+      transition={{ duration: 0.2 }}
     >
-      <div style={{
-        padding: '16px',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-      }}>
-        {/* Header with type */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: '8px',
-          fontSize: '0.8rem',
-          color: '#888',
-        }}>
-          <span style={{ 
-            backgroundColor: '#34363f', 
-            borderRadius: '4px', 
-            padding: '2px 6px',
-            marginRight: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            color: getBorderColor(item.type),
-          }}>
-            <span style={{ fontSize: '0.9rem' }}>{getTypeIcon(item.type)}</span> {item.type}
-          </span>
+      <div> {/* Top section for content */} 
+        <div style={cardHeaderStyle}>
+          <h3 style={cardTitleStyle}>{item.name}</h3>
+          <span style={typeIconStyle} title={item.type}>{getTypeIcon(item.type)}</span>
         </div>
-        
-        {/* Title - Clickable and opens in new tab */}
-        <h3 style={titleStyle}>
-          <a 
-            href={item.link} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{ 
-              color: getBorderColor(item.type), 
-              textDecoration: 'none',
-              transition: 'color 0.2s ease'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.color = '#fff'}
-            onMouseOut={(e) => e.currentTarget.style.color = getBorderColor(item.type)}
-            onClick={(e) => e.stopPropagation()} // Prevent card click when clicking link
-            title={item.name} // Add title for tooltip on hover
-          >
-            {item.name}
-          </a>
-        </h3>
-        
-        {/* Developer Info */}
-        {item.developer && (
-          <div style={developerStyle}>By: {item.developer}</div>
-        )}
-        
-        {/* Description */}
-        <p style={descriptionStyle} title={item.description}>
-          {item.description}
-        </p>
-
-        {/* Key Features */}
-        {item.keyFeatures && item.keyFeatures.length > 0 && (
-          <div style={featuresContainerStyle}>
-            <h4 style={featuresTitleStyle}>Key Features:</h4>
-            <div>
-              {item.keyFeatures.map((feature, index) => (
-                <span key={index} style={featureTagStyle}>
-                  {feature}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Footer with tags */}
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '6px',
-          marginTop: 'auto',
-          paddingTop: '12px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-          minHeight: '36px', // Ensure consistent height
-        }}>
-          {item.tags.map((tag, index) => (
-            <span 
-              key={index}
-              style={{
-                padding: '3px 8px',
-                borderRadius: '4px',
-                backgroundColor: `${getBorderColor(item.type)}15`,
-                color: getBorderColor(item.type),
-                fontSize: '0.75rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'inline-flex',
-                alignItems: 'center',
-                height: '24px', // Fixed height for consistency
-              }}
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent card click
-                onTagClick(tag);
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        <p style={descriptionStyle}>{item.description}</p>
       </div>
-    </div>
+      <div style={tagsContainerStyle}> {/* Bottom section for tags */} 
+        {item.tags.map(tag => (
+          <button 
+            key={tag} 
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card click when clicking tag
+              onTagClick(tag);
+            }}
+            style={tagButtonStyle(selectedTags.includes(tag))} // Use shared tag style
+            aria-label={`Filter by tag ${tag}`}
+          >
+            #{tag}
+          </button>
+        ))}
+      </div>
+    </motion.div>
   );
 };
 
-// Item Detail View Component
+// Props for ItemDetailView
 interface ItemDetailViewProps {
   item: {
     id: string;
@@ -671,108 +629,98 @@ interface ItemDetailViewProps {
     tags: string[];
   };
   onTagClick: (tag: string) => void;
+  selectedTags: string[];
 }
 
-const ItemDetailView: React.FC<ItemDetailViewProps> = ({ item, onTagClick }) => {
+// Component to display item details in modal
+const ItemDetailView: React.FC<ItemDetailViewProps> = ({ item, onTagClick, selectedTags }) => {
+  const detailContentStyle = {
+    color: '#ccc',
+  };
+  
+  const detailTitleStyle = {
+    fontSize: '1.8rem',
+    fontWeight: '600',
+    color: '#eee',
+    marginBottom: '15px',
+    borderBottom: `2px solid ${typeDefinitions[item.type]?.color || '#555'}`,
+    paddingBottom: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  };
+
+  const typeLabelStyle = {
+    fontSize: '0.9rem',
+    fontWeight: '500',
+    color: typeDefinitions[item.type]?.color || '#ccc',
+    background: `${typeDefinitions[item.type]?.color || '#555'}20`,
+    padding: '4px 10px',
+    borderRadius: '6px',
+  };
+
+  const detailDescriptionStyle = {
+    fontSize: '1rem',
+    lineHeight: 1.7,
+    marginBottom: '25px',
+  };
+
+  const detailLinkStyle = {
+    display: 'inline-block',
+    marginTop: '10px',
+    padding: '10px 20px',
+    borderRadius: '8px',
+    background: '#3b82f6', // Use a consistent action color
+    color: '#ffffff',
+    fontWeight: '500',
+    textDecoration: 'none',
+    transition: 'background 0.2s ease',
+  };
+  
+  const detailTagsContainerStyle = {
+    marginTop: '25px',
+    borderTop: '1px solid #34363f',
+    paddingTop: '20px',
+  };
+  
+  const detailTagsTitleStyle = {
+    fontSize: '1rem',
+    fontWeight: '500',
+    color: '#aaa',
+    marginBottom: '12px',
+  };
+
   return (
-    <div>
-      {/* Header */}
-      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ 
-          backgroundColor: '#34363f',
-          borderRadius: '6px',
-          width: '36px',
-          height: '36px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '1.2rem'
-        }}>
-          {item.type === 'Model' ? '🤖' : item.type === 'Tool' ? '🛠️' : '📊'}
-        </div>
-        <div>
-          <span style={{ 
-            color: '#999', 
-            textTransform: 'uppercase' as const, 
-            fontSize: '0.8rem', 
-            fontWeight: 'bold',
-            letterSpacing: '0.05em'
-          }}>
-            {item.type}
-          </span>
-          <h2 style={{ margin: '5px 0 0 0', color: '#fff', fontSize: '1.8rem' }}>
-            {item.name}
-          </h2>
-        </div>
-      </div>
-      
-      {/* Main content */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {/* Description */}
-        <div>
-          <h3 style={{ margin: '0 0 8px 0', color: '#ccc', fontSize: '1.1rem' }}>Overview</h3>
-          <p style={{ margin: '0', color: '#aaa', lineHeight: '1.6', fontSize: '1rem' }}>
-            {item.description}
-          </p>
-        </div>
-        
-        {/* Tags */}
-        <div>
-          <h3 style={{ margin: '0 0 10px 0', color: '#ccc', fontSize: '1.1rem' }}>Capabilities & Features</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {item.tags.map((tag, index) => (
-              <span 
-                key={index}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '20px',
-                  backgroundColor: 'rgba(42, 157, 143, 0.15)',
-                  color: '#2a9d8f',
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onClick={() => {
-                  onTagClick(tag);
-                }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(42, 157, 143, 0.3)'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(42, 157, 143, 0.15)'}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-        
-        {/* External links */}
-        <div>
-          <h3 style={{ margin: '0 0 10px 0', color: '#ccc', fontSize: '1.1rem' }}>Resources</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <a 
-              href={item.link} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{
-                padding: '10px 15px',
-                backgroundColor: '#2a9d8f',
-                color: '#fff',
-                textDecoration: 'none',
-                borderRadius: '6px',
-                fontSize: '0.95rem',
-                display: 'inline-block',
-                width: 'fit-content',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#38b2a8'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2a9d8f'}
+    <div style={detailContentStyle}>
+      <h2 style={detailTitleStyle}>
+        {item.name}
+        <span style={typeLabelStyle}>{item.type}</span>
+      </h2>
+      <p style={detailDescriptionStyle}>{item.description}</p>
+      <a 
+        href={item.link} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        style={detailLinkStyle}
+        onMouseOver={(e) => (e.currentTarget.style.background = '#2563eb')}
+        onMouseOut={(e) => (e.currentTarget.style.background = '#3b82f6')}
+      >
+        Visit Link
+      </a>
+      <div style={detailTagsContainerStyle}>
+        <h4 style={detailTagsTitleStyle}>Tags:</h4>
+        <div style={buttonContainerStyle}> {/* Reuse button container */} 
+          {item.tags.map(tag => (
+            <button 
+              key={tag} 
+              onClick={() => onTagClick(tag)} 
+              style={tagButtonStyle(selectedTags.includes(tag))}
+              aria-label={`Filter by tag ${tag}`}
             >
-              Visit Official Website
-            </a>
-            {/* Additional links would go here */}
-          </div>
+              #{tag}
+            </button>
+          ))}
         </div>
-        
-        {/* Additional info like papers, pricing would go here */}
       </div>
     </div>
   );
