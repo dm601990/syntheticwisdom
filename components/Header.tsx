@@ -138,7 +138,8 @@ const Header: React.FC<HeaderProps> = ({ categories, activeCategory, setActiveCa
         </Link>
       </nav>
       
-      {/* Category Navigation (Only shown on AI News page) */}
+      {/* Category Navigation (Only shown on AI News page) - REMOVED */}
+      {/* 
       {pathname === '/' && categories && activeCategory && setActiveCategory && (
         <nav style={categoryNavStyle}>
           {categories.map((category) => (
@@ -158,6 +159,7 @@ const Header: React.FC<HeaderProps> = ({ categories, activeCategory, setActiveCa
           ))}
         </nav>
       )}
+      */}
     </>
   );
 };

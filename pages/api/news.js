@@ -22,8 +22,8 @@ const CACHE_SETTINGS = {
   NEWS_API: {
     DURATION_SHORT: 10 * 60 * 1000,        // 10 minutes for very recent news
     DURATION_MEDIUM: 60 * 60 * 1000,       // 1 hour for recent news
-    DURATION_LONG: 6 * 60 * 60 * 1000,     // 6 hours for older news
-    DURATION_EXTENDED: 24 * 60 * 60 * 1000 // 24 hours for very old news
+    DURATION_LONG: 72 * 60 * 60 * 1000,     // 72 hours (3 days) for older news (Increased from 6 hours)
+    DURATION_EXTENDED: 168 * 60 * 60 * 1000 // 168 hours (7 days) for very old news (Increased from 24 hours)
   },
   AI_PROCESSING: {
     DURATION: 7 * 24 * 60 * 60 * 1000      // 7 days for AI-processed content
@@ -233,45 +233,49 @@ setInterval(() => {
 console.log("Enhanced multi-tiered caching system initialized");
 // --- End Enhanced Caching System ---
 
-// Add this helper function near the top, after imports/AI client setup
+// --- Stricter Category Determination Logic ---
 function getCategoryFromText(title = '', summary = '') {
-    const lowerCaseText = (title + ' ' + summary).toLowerCase();
-    const aiRegex = /\b(ai|artificial intelligence|machine learning|deep learning|neural|algorithm|model|compute|data science|automated)\b/;
+    const lowerCaseTitle = title.toLowerCase();
+    const lowerCaseText = (lowerCaseTitle + ' ' + (summary || '')).toLowerCase();
+    
+    // --- Core AI Terms (Stricter) ---
+    const coreAiRegex = /\b(ai|artificial intelligence|machine learning|deep learning|neural network|llm|large language model|generative ai)\b/;
+    const titleHasCoreAi = coreAiRegex.test(lowerCaseTitle);
 
-    // --- Consolidated Categories (Option 2) --- 
+    // --- Category Specific Keywords ---
+    const techKeywords = /\b(research|study|paper|model|gpt|openai|anthropic|claude|gemini|llama|mistral|transformer|algorithm|compute|robot|autonomous|hardware|chip|gpu|cpu|science|develop|breakthrough)\b/;
+    const industryKeywords = /\b(business|market|invest|funding|startup|enterprise|economic|policy|regulation|law|ethic|social|bias|fair|safety|responsible|impact|deploy|adopt|governance)\b/;
+    const toolsKeywords = /\b(tool|application|product|feature|platform|service|software|app|creative|art|image|video|music|generate|diffusion|education|skill|api|sdk)\b/;
 
-    // Technology & Research:
-    // Covers LLM, Research, Science, Robotics keywords, requiring AI term
-    if ((/\b(llm|gpt|language model|chat(gpt|bot)|openai|anthropic|claude|gemini|transformer|prompt|token|llama|mistral|falcon|generative ai|research|study|paper|researcher|university|breakthrough|discover|advance|progress|innovation|novel|technique|science|health|medical|biology|chemistry|physics|climate|environment|space|planet|astronomy|robot|hardware|device|physical|mechanical|motor|sensor|camera|embodied|android|humanoid|machine|automat|drone|autonomous vehicle|self-driving)\b/.test(lowerCaseText)) && 
-        aiRegex.test(lowerCaseText)) {
+    // --- Stricter Categorization Logic ---
+
+    // 1. Technology & Research: 
+    // Requires core AI term in title OR core AI + tech keywords in text
+    if ( (titleHasCoreAi && techKeywords.test(lowerCaseTitle)) || // Strong title signal
+         (coreAiRegex.test(lowerCaseText) && techKeywords.test(lowerCaseText)) ) { // Text signal
         return 'Technology & Research';
     }
 
-    // Impact & Industry:
-    // Covers Business, Policy, Ethics keywords, requiring AI term
-    if ((/\b(business|market|stock|invest|funding|startup|enterprise|economic|acquisition|merger|ipo|venture|capital|valuation|billion|million|profit|revenue|growth|industry|deploy|adopt|policy|regulation|law|legal|compliance|congress|senate|eu|government|regulator|rule|standard|framework|guideline|copyright|governance|impact|geopolitic|ethic|social|society|bias|fair|discrimination|harm|risk|safety|responsible|trustworth|accountability|transparency|privacy|right|human|alignment)\b/.test(lowerCaseText)) &&
-        aiRegex.test(lowerCaseText)) {
+    // 2. Impact & Industry:
+    // Requires core AI term in title OR core AI + industry keywords in text
+    if ( (titleHasCoreAi && industryKeywords.test(lowerCaseTitle)) || // Strong title signal
+         (coreAiRegex.test(lowerCaseText) && industryKeywords.test(lowerCaseText)) ) { // Text signal
         return 'Impact & Industry';
     }
     
-    // Applications & Tools:
-    // Covers Creative AI, Tools, Education keywords, requiring AI term
-    if ((/\b(art|creative|design|music|image|video|film|cinema|write|text|content|creation|generate|generative|midjourney|dall-e|stable diffusion|stylegan|diffusion model|synthes|tool|application|product|feature|solution|platform|service|software|app|release|update|version|api|interface|user|customer|framework|library|sdk|education|school|student|learn|teach|classroom|course|training|tutor|curriculum|skill|knowledge|academic)\b/.test(lowerCaseText)) &&
-        aiRegex.test(lowerCaseText)) {
+    // 3. Applications & Tools:
+    // Requires core AI term in title OR core AI + tools keywords in text
+    if ( (titleHasCoreAi && toolsKeywords.test(lowerCaseTitle)) || // Strong title signal
+         (coreAiRegex.test(lowerCaseText) && toolsKeywords.test(lowerCaseText)) ) { // Text signal
         return 'Applications & Tools';
     }
 
-    // Humor & Fiction (No strict AI requirement, assumes context)
-    if (/\b(fake|fictional|satire|funny|absurd|joke|humor|comedy|parody|silly)\b/.test(lowerCaseText) || title.toLowerCase().includes('simulated silliness')) {
+    // 4. Simulated Silliness (Remains less strict, based on specific keywords or title)
+    if (/\b(fake|fictional|satire|funny|absurd|joke|humor|comedy|parody|silly)\b/.test(lowerCaseText) || lowerCaseTitle.includes('simulated silliness')) {
         return 'Simulated Silliness';
     }
 
-    // If general AI terms are present but no specific category matched
-    if (aiRegex.test(lowerCaseText)) {
-        return 'AI News'; // General AI Fallback
-    }
-
-    // Default to null if no AI relevance found
+    // If no strong category match found, return null. Removed the 'AI News' fallback.
     return null;
 }
 
@@ -370,40 +374,48 @@ export default async function handler(req, res) {
   const page = parseInt(req.query.page) || 1; // Default to page 1
   const pageSize = parseInt(req.query.pageSize) || 20; // Changed from 8 to 20 articles per page
   
-  // Define search queries for different AI topics
-  const topicQueries = {
-    general: 'artificial intelligence',
-    llm: 'large language models OR chatgpt OR claude OR gemini',
-    robotics: 'AI robotics OR autonomous robots',
-    ml: 'machine learning OR deep learning',
-    business: 'AI business applications OR AI startups',
-    ethics: 'AI ethics OR responsible AI'
-  };
+  // --- Search Query focused ONLY on core AI terms ---
+  const generalAiTerms = [
+    "artificial intelligence", 
+    "machine learning", 
+    "deep learning", 
+    "LLM", 
+    "large language model", 
+    "generative AI", 
+    "AI model",
+    "neural network",
+    "computer vision",
+    "natural language processing",
+    "NLP"
+    // Add other core AI concepts if needed, but keep query length in mind
+  ];
   
-  // Select the appropriate query based on the requested topic
-  const searchQuery = topicQueries[topic] || topicQueries.general;
+  // Format for NewsAPI query (enclose multi-word names in quotes, join with OR)
+  const searchQuery = generalAiTerms.map(kw => kw.includes(' ') ? `"${kw}"` : kw).join(' OR ');
   
-  // Generate cache key for this specific request
-  const cacheKey = generateNewsApiCacheKey(searchQuery, page, pageSize);
+  // Generate cache key based on the AI terms query
+  const cacheKeyBase = generalAiTerms.slice(0, 3).join('_'); // Use first 3 AI terms for cache key base
+  const cacheKey = `news_api_ai_terms:${cacheKeyBase}:page${page}:size${pageSize}`;
   
   // Try to get from cache first
   const cachedNewsResponse = enhancedCache.get(cacheKey, 'newsApi');
   
   // If we have a valid cache hit, return it immediately
   if (cachedNewsResponse) {
-    console.log(`NewsAPI Cache HIT for query: "${searchQuery}" page ${page}`);
+    console.log(`NewsAPI Cache HIT for key: ${cacheKey}`);
     return res.status(200).json(cachedNewsResponse);
   }
   
-  console.log(`NewsAPI Cache MISS for query: "${searchQuery}" page ${page}`);
+  console.log(`NewsAPI Cache MISS for key: ${cacheKey}`);
+  console.log(`NewsAPI Query (first 100 chars): ${searchQuery.substring(0, 100)}...`); // Log part of the query
   
-  // --- FETCH ARTICLES WITH PAGINATION ---
+  // --- FETCH ARTICLES WITH PAGINATION using /v2/everything endpoint ---
   const newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(searchQuery)}&language=en&sortBy=publishedAt&page=${page}&pageSize=${pageSize}&apiKey=${newsApiKey}`;
 
   // --- UPDATED TRY/CATCH BLOCK ---
   try {
     // 1. Fetch news snippets
-    console.log("Fetching from NewsAPI...");
+    console.log("Fetching from NewsAPI (/everything endpoint)...");
     const newsResponse = await fetch(newsApiUrl);
     if (!newsResponse.ok) { 
       const errorData = await newsResponse.json();
@@ -531,13 +543,13 @@ export default async function handler(req, res) {
         totalResults: newsData.totalResults || processedArticles.length,
         totalPages: newsData.totalResults ? Math.ceil(newsData.totalResults / pageSize) : 1
       },
-      topic: topic,
+      topic: topic, // Keep track of the original requested topic if needed elsewhere
       cacheStats: enhancedCache.getStats()
     };
     
     // Cache the complete response with TTL based on content freshness
     // For mixed freshness articles, use the shortest TTL to be safe
-    const oldestArticleHours = Math.min(...processedArticles.map(a => a.hoursSincePublication));
+    const oldestArticleHours = processedArticles.length > 0 ? Math.min(...processedArticles.map(a => a.hoursSincePublication)) : 0;
     enhancedCache.set(
       cacheKey, 
       responseData, 
