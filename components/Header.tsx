@@ -6,9 +6,7 @@ import { usePathname } from 'next/navigation';
 
 // Define props interface
 interface HeaderProps {
-  categories?: string[];
-  activeCategory?: string;
-  setActiveCategory?: React.Dispatch<React.SetStateAction<string>>;
+  // No props needed anymore
 }
 
 // Navigation styles
@@ -43,39 +41,9 @@ const activeLinkStyle = {
   boxShadow: 'inset 0 -3px 0 #f97316',
 };
 
-// Category button container style
-const categoryNavStyle = {
-  display: 'flex',
-  flexWrap: 'wrap' as const,
-  justifyContent: 'center',
-  gap: '8px',
-  marginTop: '20px',
-  marginBottom: '20px',
-  padding: '0 15px',
-};
+// Unused styles removed
 
-// Category button style
-const categoryButtonStyle = {
-  padding: '6px 14px',
-  borderRadius: '16px',
-  border: '1px solid #444',
-  background: '#2a2d31',
-  color: '#ccc',
-  cursor: 'pointer',
-  fontSize: '0.85rem',
-  transition: 'all 0.2s ease',
-};
-
-// Active category button style
-const activeCategoryButtonStyle = {
-  ...categoryButtonStyle,
-  background: '#f97316', // Use accent color for active
-  color: '#111',
-  border: '1px solid #f97316',
-  fontWeight: 'bold',
-};
-
-const Header: React.FC<HeaderProps> = ({ categories, activeCategory, setActiveCategory }) => {
+const Header: React.FC<HeaderProps> = () => {
   const pathname = usePathname() || '';
   
   // Determine active link
