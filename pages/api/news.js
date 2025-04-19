@@ -236,70 +236,43 @@ console.log("Enhanced multi-tiered caching system initialized");
 // Add this helper function near the top, after imports/AI client setup
 function getCategoryFromText(title = '', summary = '') {
     const lowerCaseText = (title + ' ' + summary).toLowerCase();
+    const aiRegex = /\b(ai|artificial intelligence|machine learning|deep learning|neural|algorithm|model|compute|data science|automated)\b/;
 
-    // Define keywords for categories with expanded patterns
-    // LLM & Generative AI
-    if (/\b(llm|gpt|language model|chat(gpt|bot)|openai|anthropic|claude|gemini|transformer|prompt|token|llama|mistral|falcon|generative ai)\b/.test(lowerCaseText)) {
-        return 'LLM';
+    // --- Consolidated Categories (Option 2) --- 
+
+    // Technology & Research:
+    // Covers LLM, Research, Science, Robotics keywords, requiring AI term
+    if ((/\b(llm|gpt|language model|chat(gpt|bot)|openai|anthropic|claude|gemini|transformer|prompt|token|llama|mistral|falcon|generative ai|research|study|paper|researcher|university|breakthrough|discover|advance|progress|innovation|novel|technique|science|health|medical|biology|chemistry|physics|climate|environment|space|planet|astronomy|robot|hardware|device|physical|mechanical|motor|sensor|camera|embodied|android|humanoid|machine|automat|drone|autonomous vehicle|self-driving)\b/.test(lowerCaseText)) && 
+        aiRegex.test(lowerCaseText)) {
+        return 'Technology & Research';
+    }
+
+    // Impact & Industry:
+    // Covers Business, Policy, Ethics keywords, requiring AI term
+    if ((/\b(business|market|stock|invest|funding|startup|enterprise|economic|acquisition|merger|ipo|venture|capital|valuation|billion|million|profit|revenue|growth|industry|deploy|adopt|policy|regulation|law|legal|compliance|congress|senate|eu|government|regulator|rule|standard|framework|guideline|copyright|governance|impact|geopolitic|ethic|social|society|bias|fair|discrimination|harm|risk|safety|responsible|trustworth|accountability|transparency|privacy|right|human|alignment)\b/.test(lowerCaseText)) &&
+        aiRegex.test(lowerCaseText)) {
+        return 'Impact & Industry';
     }
     
-    // AI Research
-    if (/\b(research|study|paper|researcher|university|breakthrough|discover|advance|progress|innovation|novel|technique)\b/.test(lowerCaseText) && 
-        /\b(ai|artificial intelligence|machine learning|deep learning|neural)\b/.test(lowerCaseText)) {
-        return 'Research';
+    // Applications & Tools:
+    // Covers Creative AI, Tools, Education keywords, requiring AI term
+    if ((/\b(art|creative|design|music|image|video|film|cinema|write|text|content|creation|generate|generative|midjourney|dall-e|stable diffusion|stylegan|diffusion model|synthes|tool|application|product|feature|solution|platform|service|software|app|release|update|version|api|interface|user|customer|framework|library|sdk|education|school|student|learn|teach|classroom|course|training|tutor|curriculum|skill|knowledge|academic)\b/.test(lowerCaseText)) &&
+        aiRegex.test(lowerCaseText)) {
+        return 'Applications & Tools';
     }
-    
-    // Business & Market
-    if (/\b(business|market|stock|invest|funding|startup|enterprise|economic|acquisition|merger|ipo|venture|capital|valuation|billion|million|profit|revenue|growth)\b/.test(lowerCaseText)) {
-        return 'Business';
-    }
-    
-    // Policy & Regulation
-    if (/\b(policy|regulation|law|legal|compliance|congress|senate|eu|government|regulator|rule|standard|framework|guideline|copyright|governance)\b/.test(lowerCaseText)) {
-        return 'Policy';
-    }
-    
-    // Ethics & Society
-    if (/\b(ethic|social|society|bias|fair|discrimination|harm|risk|safety|responsible|trustworth|accountability|transparency|privacy|right|human)\b/.test(lowerCaseText)) {
-        return 'Ethics';
-    }
-    
-    // Art & Creativity
-    if (/\b(art|creative|design|music|image|video|film|cinema|write|text|content|creation|generate|midjourney|dall-e|stable diffusion)\b/.test(lowerCaseText)) {
-        return 'Creative AI';
-    }
-    
-    // Applications & Tools
-    if (/\b(tool|application|product|feature|solution|platform|service|software|app|release|update|version|api|interface|user|customer)\b/.test(lowerCaseText)) {
-        return 'Tools';
-    }
-    
-    // Robotics & Hardware
-    if (/\b(robot|hardware|device|physical|mechanical|motor|sensor|camera|embodied|android|humanoid|machine|automat)\b/.test(lowerCaseText)) {
-        return 'Robotics';
-    }
-    
-    // Science & Healthcare
-    if (/\b(science|health|medical|patient|doctor|treatment|drug|medicine|disease|diagnos|therapy|biology|chemistry|physics|climate|environment|space|planet|astronomy)\b/.test(lowerCaseText)) {
-        return 'Science';
-    }
-    
-    // Education & Learning
-    if (/\b(education|school|student|learn|teach|classroom|course|training|tutor|curriculum|skill|knowledge)\b/.test(lowerCaseText)) {
-        return 'Education';
-    }
-    
-    // Humor & Fiction
-    if (/\b(fake|fictional|satire|funny|absurd|joke|humor|comedy|parody|silly)\b/.test(lowerCaseText) || title.includes('Simulated Silliness')) {
+
+    // Humor & Fiction (No strict AI requirement, assumes context)
+    if (/\b(fake|fictional|satire|funny|absurd|joke|humor|comedy|parody|silly)\b/.test(lowerCaseText) || title.toLowerCase().includes('simulated silliness')) {
         return 'Simulated Silliness';
     }
 
-    // If we couldn't determine a specific category, check for general AI terms
-    if (/\b(ai|artificial intelligence|machine learning|deep learning|neural|algorithm)\b/.test(lowerCaseText)) {
-        return 'AI News';
+    // If general AI terms are present but no specific category matched
+    if (aiRegex.test(lowerCaseText)) {
+        return 'AI News'; // General AI Fallback
     }
 
-    return 'Tech'; // Default fallback category that's better than "General"
+    // Default to null if no AI relevance found
+    return null;
 }
 
 // --- Add separate functions for entities and sentiment ---

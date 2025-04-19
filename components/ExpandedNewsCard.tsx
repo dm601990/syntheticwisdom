@@ -8,12 +8,11 @@ import {
   expandedSummaryStyle, 
   aiFeatureSectionStyle,
   aiFeatureTitleStyle,
-  keywordStyle,
   metadataStyle
 } from '../styles/styles';
 
 // Extended interface for API articles which have additional fields
-interface ApiNewsItem extends NewsItem {
+export interface ApiNewsItem extends NewsItem {
   publicationDate?: string;
   sourceName?: string;
   readTime?: number;

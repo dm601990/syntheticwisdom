@@ -165,7 +165,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({ categories }) => {
       >
         <div style={successStyle}>
           <h3 style={{ margin: '0 0 10px 0', color: '#57cc99' }}>Thanks for signing up!</h3>
-          <p style={{ margin: 0 }}>You'll start receiving updates from Synthetic Wisdom soon.</p>
+          <p style={{ margin: 0 }}>You&apos;ll start receiving updates from Synthetic Wisdom soon.</p>
         </div>
         <button 
           style={{ ...buttonStyle, marginTop: '20px' }}
@@ -217,7 +217,7 @@ const NewsletterSignup: React.FC<NewsletterSignupProps> = ({ categories }) => {
         {emailError && <div style={errorStyle}>{emailError}</div>}
         
         <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: '10px', textAlign: 'center' }}>
-          Select topics you're interested in:
+          Select topics you&apos;re interested in:
         </p>
         <div style={categoriesListStyle}>
           {categories.filter(c => c !== 'All').map(category => (

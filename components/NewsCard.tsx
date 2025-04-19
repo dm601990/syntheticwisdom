@@ -17,30 +17,15 @@ interface NewsCardProps {
   id: string;
   title: string;
   summary?: string;
-  category: string;
+  category: string | null;
   energy: number;
   onExpand: (id: string) => void;
   date?: string;
   source?: string;
   wordCount?: number;
   url?: string; // Add URL property
+  hideDate?: boolean; // Add optional prop to hide date
 }
-
-// Basic styling
-const cardStyle = {
-  background: '#1a1d21', // Dark card background
-  border: '1px solid #333',
-  borderRadius: '8px',
-  color: '#e0e0e0',
-  cursor: 'pointer',
-  position: 'relative' as const,
-  overflow: 'hidden', // Hide overflow for indicator
-};
-
-const contentStyle = {
-  padding: '16px',
-  paddingLeft: '24px', // Add extra left padding for the energy indicator
-};
 
 // Custom title style to avoid TypeScript errors
 const customTitleStyle = {
@@ -66,15 +51,6 @@ const customDescriptionStyle = {
   flex: '1 0 auto',
 };
 
-const metadataStyle = {
-  fontSize: '0.8rem',
-  color: '#777',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  flexWrap: 'wrap' as const,
-};
-
 const sourceStyle = {
   fontSize: '0.75rem',
   fontWeight: '600',
@@ -83,6 +59,7 @@ const sourceStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: '6px',
+  backgroundColor: 'rgba(42, 157, 143, 0.08)', // Very subtle background
 };
 
 const dateStyle = {
@@ -103,32 +80,11 @@ const readTimeStyle = {
   backgroundColor: 'rgba(42, 157, 143, 0.08)', // Very subtle background
 };
 
-const chipStyle = {
-  display: 'inline-block',
-  padding: '2px 6px',
-  borderRadius: '4px',
-  fontSize: '0.7rem',
-  marginRight: '6px',
-  background: 'rgba(42, 157, 143, 0.15)',
-  color: '#2a9d8f',
-};
-
 // Style for the small favicon
 const logoIconStyle = {
   borderRadius: '4px', // Slightly rounded corners for the icon
   objectFit: 'contain' as const,
 };
-
-// Energy indicator styling (vertical bar on left)
-const energyIndicatorStyle = (energy: number) => ({
-  position: 'absolute' as const,
-  top: '0',
-  left: '0',
-  width: '5px', // Width of the bar
-  height: '100%', // Full height of the card
-  backgroundColor: `hsl(170, 60%, ${30 + energy * 40}%)`, // Adjust HSL values as needed
-  transition: 'background-color 0.3s ease',
-});
 
 // Helper to get domain from URL
 function getDomainFromUrl(url?: string): string | null {
@@ -201,7 +157,11 @@ const formatDate = (dateString?: string): string => {
 };
 
 // Helper function to get category color
-const getCategoryColor = (category: string): { bg: string, text: string } => {
+const getCategoryColor = (category: string | null): { bg: string, text: string } => {
+  if (!category) {
+    // Return a default or neutral style if category is null
+    return { bg: 'rgba(75, 85, 99, 0.1)', text: '#9ca3af' }; // Gray
+  }
   switch(category) {
     case 'LLM':
       return { bg: 'rgba(79, 70, 229, 0.15)', text: '#6366f1' }; // Purple
@@ -242,91 +202,72 @@ export function NewsCard({
   date,
   source,
   wordCount,
-  url
+  url,
+  hideDate = false // Default to false
 }: NewsCardProps) {
-  const readTime = calculateReadTime(wordCount, summary);
-  const formattedDate = formatDate(date);
-  
-  // Extract domain and create favicon URL
   const domain = getDomainFromUrl(url);
-  // Use our local fallback icon directly instead of trying DuckDuckGo first
-  const faviconUrl = '/images/default-favicon.svg';
-  
+  const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : null;
+  const categoryColors = getCategoryColor(category); // Get colors based on category
+  const readTimeString = calculateReadTime(wordCount, summary);
+  const formattedDate = formatDate(date);
+
   return (
-    // Use framer-motion for animations
-    <motion.div
-      layoutId={`card-container-${id}`}
-      style={{
-        ...standardCardStyle,
-        borderLeft: `5px solid hsl(170, 60%, ${30 + energy * 40}%)`, // Energy indicator
-      }}
+    <motion.div 
+      style={standardCardStyle} 
       whileHover={{ 
-        scale: 1.02, 
-        backgroundColor: '#2a2d31',
-        boxShadow: `0 4px 20px rgba(42, 157, 143, ${energy * 0.5})` // Energy affects glow intensity
+        transform: 'translateY(-5px)',
+        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.3)',
       }}
-      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+      transition={{ type: 'spring', stiffness: 300 }}
       onClick={() => onExpand(id)}
+      tabIndex={0} // Make it focusable
+      aria-label={`Read more about ${title}`}
     >
-      {/* Content with padding */}
       <div style={standardCardContentStyle}>
-        {/* Source and date */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-          {source && (
-            <div style={sourceStyle}>
-              {faviconUrl && (
-                <Image
-                  src={faviconUrl}
-                  alt={`${source || domain || 'Source'} logo`}
-                  width={16}
-                  height={16}
-                  style={logoIconStyle}
-                />
-              )}
-              <span style={{ flexShrink: 0 }}>{source}</span>
-            </div>
+        {/* Source and Date Header */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', gap: '8px' }}>
+          {faviconUrl && (
+            <Image 
+              src={faviconUrl} 
+              alt={`${source || 'Source'} logo`} 
+              width={16} 
+              height={16}
+              style={logoIconStyle}
+              unoptimized // For external URLs
+              onError={(e) => { e.currentTarget.style.display = 'none'; }} // Hide if fails to load
+            />
           )}
-          {formattedDate && <span style={dateStyle}>{formattedDate}</span>}
+          <span style={sourceStyle}>{source || 'Unknown Source'}</span>
+          {!hideDate && <span style={dateStyle}>{formattedDate}</span>}
         </div>
         
         {/* Title */}
-        <motion.h3 
-          layoutId={`card-title-${id}`}
-          style={{...standardCardTitleStyle, ...customTitleStyle}}
-        >
-          {title}
-        </motion.h3>
+        <h2 style={customTitleStyle}>{title}</h2>
         
-        {/* Summary */}
-        {summary && (
-          <motion.p 
-            layoutId={`card-description-${id}`}
-            style={{...standardCardDescriptionStyle, ...customDescriptionStyle}}
+        {/* Description */}
+        <p style={customDescriptionStyle}>{summary || 'No description available.'}</p>
+      </div>
+      
+      {/* Footer with Category Tag and Read Time */}
+      <div style={standardCardFooterStyle}>
+        {category && (
+          <span 
+            style={{
+              ...standardCardTagStyle,
+              backgroundColor: categoryColors.bg,
+              color: categoryColors.text,
+            }}
           >
-            {summary}
-          </motion.p>
-        )}
-        
-        {/* Footer with category tag and read time */}
-        <motion.div 
-          layoutId={`card-footer-${id}`}
-          style={standardCardFooterStyle}
-        >
-          {/* Category Chip with dynamic colors */}
-          <div style={{
-            ...standardCardTagStyle,
-            backgroundColor: getCategoryColor(category).bg,
-            color: getCategoryColor(category).text
-          }}>
             {category}
-          </div>
-          
-          {/* Read Time with Clock Icon */}
-          <div style={readTimeStyle}>
-            <span style={{ marginRight: '4px', fontSize: '0.9em' }}>🕒</span> {/* Clock emoji */}
-            {readTime}
-          </div>
-        </motion.div>
+          </span>
+        )}
+        <span style={readTimeStyle}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style={{ marginRight: '4px' }}>
+            <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+            <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+          </svg>
+          {readTimeString}
+        </span>
       </div>
     </motion.div>
   );

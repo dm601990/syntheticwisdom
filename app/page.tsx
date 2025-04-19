@@ -7,8 +7,9 @@ import Header from '../components/Header';
 import ExpandedNewsCard from '../components/ExpandedNewsCard';
 import NewsletterSignup from '../components/NewsletterSignup';
 import SkeletonCard from '../components/SkeletonCard';
-import { categories } from '../data/newsData';
+import { categories as rawCategories } from '../data/newsData';
 import { pageStyle, gridStyle, dividerStyle } from '../styles/styles';
+import { type ApiNewsItem } from '../components/ExpandedNewsCard';
 
 // Global style to prevent stray elements
 const globalStyle = `
@@ -138,11 +139,14 @@ const gridContainerStyle = {
   gap: '24px', // Slightly increase spacing
 };
 
+// Filter out 'All' and 'AI News' and 'Simulated Silliness' categories for the filter buttons on the news page
+const displayCategories = rawCategories.filter(cat => cat && !['All', 'AI News', 'Simulated Silliness'].includes(cat));
+
 export default function HomePage() {
-  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [activeCategory, setActiveCategory] = useState<string>(displayCategories[0] || 'Technology & Research');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [articles, setArticles] = useState<any[]>([]);
+  const [articles, setArticles] = useState<ApiNewsItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
   const [error, setError] = useState<string | null>(null);
@@ -204,15 +208,16 @@ export default function HomePage() {
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorData.details || errorMsg;
-        } catch (e) { /* Ignore parsing error if response wasn't JSON */ }
+        } catch (_e) { /* Ignore parsing error if response wasn't JSON */ }
         throw new Error(errorMsg);
       }
       const data = await response.json();
       console.log("Frontend: Received articles:", data.articles?.length || 0);
       setArticles(data.articles || []);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Frontend: Failed to fetch news:", e);
-      setError(e.message || 'An unknown error occurred fetching news.'); // Set error state
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred fetching news.';
+      setError(errorMessage); // Set error state
       setArticles([]); // Clear articles on error
     } finally {
       setLoading(false);
@@ -236,7 +241,7 @@ export default function HomePage() {
     const articlesWithSharedEntities = articles.filter(article =>
        article.id !== selectedArticle.id &&
        article.entities && article.entities.length > 0 &&
-       selectedEntities.some((entity: string) => article.entities.includes(entity))
+       selectedEntities.some((entity: string) => article.entities?.includes(entity))
     );
     
     // Sort by date, using string comparison if date is not convertible to Date
@@ -248,7 +253,7 @@ export default function HomePage() {
       
       try {
         return new Date(dateB).getTime() - new Date(dateA).getTime();
-      } catch (e) {
+      } catch (_e) {
         // Fallback to string comparison if date conversion fails
         return dateB.localeCompare(dateA);
       }
@@ -281,14 +286,16 @@ export default function HomePage() {
 
   // Filter and process articles based on category and search term
   const filteredArticles = useMemo(() => {
-    // First filter by category
-    let results = activeCategory === 'All' 
-      ? articles 
-      : articles.filter(article => article.category === activeCategory);
+    // Start with articles that have a valid category (not null)
+    let validArticles = articles.filter(article => article.category);
+    
+    // Filter by the active category
+    let results = validArticles.filter(article => article.category === activeCategory);
     
     // Then filter by search term if there is one
     if (searchTerm.trim() !== '') {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      // Search within the category-filtered results
       results = results.filter(article => 
         article.title.toLowerCase().includes(lowerCaseSearchTerm) || 
         (article.summary && article.summary.toLowerCase().includes(lowerCaseSearchTerm)) ||
@@ -342,7 +349,7 @@ export default function HomePage() {
   };
 
   // Function to fetch detailed content
-  const fetchDetailedContent = useCallback((article: any) => {
+  const fetchDetailedContent = useCallback((article: ApiNewsItem) => {
     // Function to close existing connection
     const closeEventSource = () => {
         if (eventSourceRef.current) {
@@ -389,7 +396,6 @@ export default function HomePage() {
         const newEventSource = new EventSource(eventSourceUrl);
         eventSourceRef.current = newEventSource;
 
-        let accumulatedSummary = ''; // Local accumulator for this specific fetch
         let completeSummary = ''; // To store the complete summary for caching
 
         newEventSource.onopen = () => {
@@ -441,8 +447,7 @@ export default function HomePage() {
                     });
                     
                     // Reset accumulators
-                    completeSummary = ''; 
-                    accumulatedSummary = '';
+                    completeSummary = '';
                     return;
                 }
 
@@ -454,7 +459,6 @@ export default function HomePage() {
                     if (data.phase === "REAL_CONTENT") {
                         // Add to complete summary for caching
                         completeSummary += textChunk;
-                        accumulatedSummary += textChunk;
                         
                         // Update state with real content
                         setDetailedContent(prev => ({
@@ -526,221 +530,185 @@ export default function HomePage() {
         console.error("Failed to create EventSource:", e);
         setError("Failed to establish connection for summary.");
         setIsDetailLoading(false);
+        // Set a fallback summary to prevent UI issues
         setDetailedContent(prev => ({
             ...prev,
-            aiSummary: "Summary generation failed. Please try again later."
+            aiSummary: prev.aiSummary || "Summary generation failed. Please try again later."
         }));
     }
-}, [setError, setIsDetailLoading, setDetailedContent, saveCache]);
+}, [setError, setIsDetailLoading, setDetailedContent, saveCache, detailedContent.aiSummary]);
 
   return (
-    <div style={pageStyle}>
-      {/* Global Style to prevent stray characters */}
-      <style jsx global>{globalStyle}</style>
-      
-      {/* Header with logo */}
-      <Header />
-      
-      {/* Controls Container */}
-      <div style={controlsContainerStyle}>
-        {/* Search input */}
-        <input
-          type="search"
-          placeholder="Search articles..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          style={searchInputStyle}
-          aria-label="Search for news articles"
-          onFocus={(e) => {
-            e.currentTarget.style.boxShadow = '0 3px 12px rgba(42, 157, 143, 0.25)';
-            e.currentTarget.style.borderColor = '#2a9d8f';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-            e.currentTarget.style.borderColor = '#333';
-          }}
+    <>
+      <style>{globalStyle}</style>
+      <div style={pageStyle}>
+        {/* Pass filtered categories to Header */}
+        <Header 
+          categories={displayCategories} 
+          activeCategory={activeCategory} 
+          setActiveCategory={setActiveCategory} 
         />
         
-        {/* Category filter buttons */}
-        <div style={{ 
-          display: 'flex', 
-          flexWrap: 'wrap' as const,
-          justifyContent: 'center',
-          gap: '8px',
-          marginBottom: '20px',
-          maxWidth: '800px'
-        }}>
-          {['All', 'LLM', 'Research', 'Business', 'Policy', 'Ethics', 'Creative AI', 'Tools', 'Robotics', 'Science', 'Education'].map(category => (
+        {/* Controls Container */}
+        <div style={controlsContainerStyle}>
+          {/* Search input */}
+          <input
+            type="search"
+            placeholder="Search articles..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            style={searchInputStyle}
+            aria-label="Search for news articles"
+            onFocus={(e) => {
+              e.currentTarget.style.boxShadow = '0 3px 12px rgba(42, 157, 143, 0.25)';
+              e.currentTarget.style.borderColor = '#2a9d8f';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+              e.currentTarget.style.borderColor = '#333';
+            }}
+          />
+        </div>
+        
+        {/* Enhanced Error Message with Retry Button */}
+        {error && (
+          <div style={errorContainerStyle}>
+            <p style={errorTextStyle}>Oops! Something went wrong while loading news.</p>
+            <p style={{ color: '#aaa', marginBottom: '20px', fontSize: '0.9rem' }}>Error: {error}</p>
             <button
-              key={category}
-              onClick={() => setActiveCategory(category)}
-              style={{
-                padding: '6px 12px',
-                background: activeCategory === category ? '#2a2d31' : 'transparent',
-                color: activeCategory === category ? '#fff' : '#aaa',
-                border: `1px solid ${activeCategory === category ? '#2a9d8f' : '#444'}`,
-                borderRadius: '16px',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseOver={(e) => {
-                if (activeCategory !== category) {
-                  e.currentTarget.style.borderColor = '#666';
-                  e.currentTarget.style.color = '#ddd';
-                }
-              }}
-              onMouseOut={(e) => {
-                if (activeCategory !== category) {
-                  e.currentTarget.style.borderColor = '#444';
-                  e.currentTarget.style.color = '#aaa';
-                }
-              }}
+              style={retryButtonStyle}
+              onClick={fetchNews}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(244, 106, 106, 0.1)'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              {category}
+              Try Again
             </button>
-          ))}
-        </div>
-      </div>
-      
-      {/* Enhanced Error Message with Retry Button */}
-      {error && (
-        <div style={errorContainerStyle}>
-          <p style={errorTextStyle}>Oops! Something went wrong while loading news.</p>
-          <p style={{ color: '#aaa', marginBottom: '20px', fontSize: '0.9rem' }}>Error: {error}</p>
-          <button
-            style={retryButtonStyle}
-            onClick={fetchNews}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(244, 106, 106, 0.1)'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-            Try Again
-          </button>
-        </div>
-      )}
-      
-      {/* Article Grid - Only show if no error */}
-      {!error && (
-        <div style={gridContainerStyle}>
-          <AnimatePresence mode="wait">
-            {loading ? (
-              // Skeleton loader when loading
-              <React.Fragment>
-                {[...Array(6)].map((_, index) => (
+          </div>
+        )}
+        
+        {/* Article Grid - Only show if no error */}
+        {!error && (
+          <div style={gridContainerStyle}>
+            <AnimatePresence mode="wait">
+              {loading ? (
+                // Skeleton loader when loading
+                <React.Fragment>
+                  {[...Array(6)].map((_, index) => (
+                    <motion.div
+                      key={`skeleton-${index}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                    >
+                      <SkeletonCard />
+                    </motion.div>
+                  ))}
+                </React.Fragment>
+              ) : filteredArticles.length > 0 ? (
+                // Actual content when loaded (only showing visible articles)
+                visibleArticles.map((article) => (
                   <motion.div
-                    key={`skeleton-${index}`}
+                    key={article.id}
+                    layout
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    transition={{ duration: 0.3 }}
                   >
-                    <SkeletonCard />
+                    <NewsCard
+                      id={article.id}
+                      title={article.title}
+                      summary={article.summary}
+                      category={article.category}
+                      energy={article.energy}
+                      onExpand={handleExpand}
+                      date={article.publicationDate || article.date}
+                      source={article.sourceName || article.source}
+                      wordCount={article.wordCount}
+                      url={article.url}
+                    />
                   </motion.div>
-                ))}
-              </React.Fragment>
-            ) : filteredArticles.length > 0 ? (
-              // Actual content when loaded (only showing visible articles)
-              visibleArticles.map((article) => (
-                <motion.div
-                  key={article.id}
-                  layout
-                  initial={{ opacity: 0 }}
+                ))
+              ) : (
+                // No results message
+                <motion.div 
+                  initial={{ opacity: 0 }} 
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
+                  style={{
+                    gridColumn: '1 / -1',
+                    textAlign: 'center',
+                    padding: '40px',
+                    color: '#888'
+                  }}
                 >
-                  <NewsCard
-                    id={article.id}
-                    title={article.title}
-                    summary={article.summary}
-                    category={article.category}
-                    energy={article.energy}
-                    onExpand={handleExpand}
-                    date={article.publicationDate || article.date}
-                    source={article.sourceName || article.source}
-                    wordCount={article.wordCount}
-                    url={article.url}
-                  />
+                  <h3 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>No articles found</h3>
+                  <p>Try adjusting your search or selecting a different category.</p>
                 </motion.div>
-              ))
-            ) : (
-              // No results message
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }}
-                style={{
-                  gridColumn: '1 / -1',
-                  textAlign: 'center',
-                  padding: '40px',
-                  color: '#888'
-                }}
-              >
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>No articles found</h3>
-                <p>Try adjusting your search or selecting a different category.</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
-
-      {/* Load More Button - Only show if no error */}
-      {!error && !loading && hasMoreArticles && (
-        <motion.button
-          style={loadMoreButtonStyle}
-          onClick={handleLoadMore}
-          whileHover={{ 
-            backgroundColor: '#2a2d32',
-            borderColor: '#2a9d8f',
-            boxShadow: '0 4px 8px rgba(42, 157, 143, 0.1)'
-          }}
-          whileTap={{ scale: 0.98 }}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          Load More Articles
-        </motion.button>
-      )}
-
-      {/* Divider */}
-      <div style={dividerStyle}></div>
-
-      {/* Newsletter Signup Form - Only show if no error */}
-      {!error && <NewsletterSignup categories={categories.filter(c => c !== 'All')} />}
-
-      {/* --- Footer Section --- */}
-      <footer style={footerStyle}>
-        <span>
-          © {new Date().getFullYear()} Synthetic Wisdom. All rights reserved (mostly).
-        </span>
-        {/* Ko-fi Link */}
-        <a
-          href="https://ko-fi.com/syntheticwisdom"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={kofiButtonStyle}
-          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#E04A48'}
-          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FF5E5B'}
-        >
-          Support Us on Ko-fi ❤️
-        </a>
-      </footer>
-      {/* --- End Footer Section --- */}
-
-      {/* Expanded Card Modal */}
-      <AnimatePresence>
-        {selectedId && selectedArticle && (
-          <ExpandedNewsCard 
-            article={selectedArticle} 
-            id={selectedId}
-            onClose={handleClose}
-            relatedArticles={relatedArticles}
-            onEntityClick={handleEntityClick}
-            detailedContent={detailedContent}
-            isDetailLoading={isDetailLoading}
-          />
+              )}
+            </AnimatePresence>
+          </div>
         )}
-      </AnimatePresence>
-    </div>
+
+        {/* Load More Button - Only show if no error */}
+        {!error && !loading && hasMoreArticles && (
+          <motion.button
+            style={loadMoreButtonStyle}
+            onClick={handleLoadMore}
+            whileHover={{ 
+              backgroundColor: '#2a2d32',
+              borderColor: '#2a9d8f',
+              boxShadow: '0 4px 8px rgba(42, 157, 143, 0.1)'
+            }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            Load More Articles
+          </motion.button>
+        )}
+
+        {/* Divider */}
+        <div style={dividerStyle}></div>
+
+        {/* Newsletter Signup Form - Only show if no error */}
+        {!error && <NewsletterSignup categories={displayCategories} />}
+
+        {/* --- Footer Section --- */}
+        <footer style={footerStyle}>
+          <span>
+            © {new Date().getFullYear()} Synthetic Wisdom. All rights reserved (mostly).
+          </span>
+          {/* Ko-fi Link */}
+          <a
+            href="https://ko-fi.com/syntheticwisdom"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={kofiButtonStyle}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#E04A48'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#FF5E5B'}
+          >
+            Support Us on Ko-fi ❤️
+          </a>
+        </footer>
+        {/* --- End Footer Section --- */}
+
+        {/* Expanded Card Modal */}
+        <AnimatePresence>
+          {selectedId && selectedArticle && (
+            <ExpandedNewsCard 
+              article={selectedArticle} 
+              id={selectedId}
+              onClose={handleClose}
+              relatedArticles={relatedArticles}
+              onEntityClick={handleEntityClick}
+              detailedContent={detailedContent}
+              isDetailLoading={isDetailLoading}
+            />
+          )}
+        </AnimatePresence>
+      </div>
+    </>
   );
 } 

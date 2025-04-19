@@ -4,7 +4,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { sillinessItems } from '../../data/sillinessData';
 import Header from '../../components/Header';
 import { pageStyle, gridStyle } from '../../styles/styles';
-import { categories } from '../../data/newsData';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Search input styling
@@ -99,10 +98,176 @@ const gridContainerStyle = {
   gap: '24px', // Slightly increase spacing
 };
 
+// Restore the specific interface for SillinessCard props
+interface SillinessCardProps {
+  item: {
+    id: string;
+    title: string;
+    description: string;
+    link: string;
+    tags: string[];
+    date: string;
+  };
+  onTagClick: (tag: string) => void;
+  selectedTags: string[];
+}
+
+// Restore the specific SillinessCard component implementation
+const SillinessCard: React.FC<SillinessCardProps> = ({ item, onTagClick, selectedTags }) => {
+  // Format date function (keep as it might be used elsewhere or restored later)
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return dateString; // Return original string if invalid
+    }
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  // Original styles for SillinessCard
+  const cardStyle = {
+    backgroundColor: '#252830',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    border: '1px solid #383b42',
+    transition: 'all 0.2s ease',
+  };
+
+  const contentStyle = {
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    height: '100%'
+  };
+
+  const dateContainerStyle = {
+    marginBottom: '8px',
+    fontSize: '0.8rem',
+    color: '#7d8590',
+    display: 'flex',
+    justifyContent: 'space-between'
+  };
+
+  const titleStyle = {
+    fontSize: '1.1rem',
+    fontWeight: 'bold' as const,
+    color: '#e0e0e0',
+    marginBottom: '8px',
+    lineHeight: '1.3',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: '-webkit-box' as const,
+    WebkitLineClamp: 2, // Limit to 2 lines
+    WebkitBoxOrient: 'vertical' as const,
+    maxHeight: '2.8rem', // Adjust based on line-height and clamp
+  };
+  
+  const titleLinkStyle = {
+    color: '#f97316',
+    textDecoration: 'none',
+    transition: 'color 0.2s ease',
+  };
+
+  const descriptionStyle = {
+    fontSize: '0.9rem',
+    color: '#aaa',
+    marginBottom: '12px',
+    lineHeight: '1.5',
+    flex: '1 0 auto',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: '-webkit-box' as const,
+    WebkitLineClamp: 3, // Limit to 3 lines
+    WebkitBoxOrient: 'vertical' as const,
+  };
+
+  const tagsContainerStyle = {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '6px',
+    marginTop: 'auto',
+    paddingTop: '12px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+    minHeight: '36px' // Ensure consistent height
+  };
+
+  const tagStyle = {
+    padding: '3px 8px',
+    borderRadius: '4px',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    display: 'inline-flex',
+    alignItems: 'center',
+    height: '24px' // Fixed height for consistency
+  };
+
+  return (
+    // Use motion.div for animation consistency with other pages
+    <motion.div
+        style={cardStyle}
+        whileHover={{
+            transform: 'translateY(-4px)', 
+            boxShadow: '0 6px 15px rgba(0, 0, 0, 0.3)',
+            borderColor: '#4a4d52' 
+        }}
+        transition={{ type: 'spring', stiffness: 350, damping: 20 }}
+    >
+      <div style={contentStyle}>
+        {/* Date Container - Now empty */}
+        <div style={dateContainerStyle}>
+           {/* The span containing {formatDate(item.date)} is removed */}
+        </div>
+        
+        {/* Title - link to original content */}
+        <h3 style={titleStyle}>
+          <a 
+            href={item.link} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={titleLinkStyle}
+            onMouseOver={(e) => e.currentTarget.style.color = '#fb923c'}
+            onMouseOut={(e) => e.currentTarget.style.color = '#f97316'}
+            title={item.title} // Add title for tooltip on hover
+          >
+            {item.title}
+          </a>
+        </h3>
+        
+        {/* Description */}
+        <p style={descriptionStyle} title={item.description}>
+          {item.description}
+        </p>
+        
+        {/* Tags */}
+        <div style={tagsContainerStyle}>
+          {item.tags.map((tag, index) => (
+            <span 
+              key={index}
+              style={{
+                ...tagStyle,
+                backgroundColor: selectedTags.includes(tag) ? 'rgba(249, 115, 22, 0.3)' : 'rgba(249, 115, 22, 0.1)',
+                color: '#f97316',
+              }}
+              onClick={() => onTagClick(tag)}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = selectedTags.includes(tag) ? 'rgba(249, 115, 22, 0.4)' : 'rgba(249, 115, 22, 0.2)'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = selectedTags.includes(tag) ? 'rgba(249, 115, 22, 0.3)' : 'rgba(249, 115, 22, 0.1)'}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 export default function SillinessPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Simulated Silliness');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   
   // Search debounce effect
@@ -114,17 +279,6 @@ export default function SillinessPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
   
-  // Handle category change - can be removed since we're removing the CategoryFilter
-  const handleCategoryChange = (category: string) => {
-    if (category === 'AI News') {
-      window.location.href = `/`;
-      return;
-    } else if (category === 'AI Toolkit') {
-      window.location.href = `/toolkit`;
-      return;
-    }
-  };
-
   // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -146,26 +300,6 @@ export default function SillinessPage() {
     setDebouncedSearchTerm('');
   };
   
-  // Get all unique tags from silliness items
-  const allTags = useMemo(() => {
-    const tags = new Set<string>();
-    sillinessItems.forEach(item => {
-      item.tags.forEach(tag => tags.add(tag));
-    });
-    return Array.from(tags).sort();
-  }, []);
-  
-  // Count occurrences of each tag
-  const tagCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    sillinessItems.forEach(item => {
-      item.tags.forEach(tag => {
-        counts[tag] = (counts[tag] || 0) + 1;
-      });
-    });
-    return counts;
-  }, []);
-
   // Filter items based on search term and selected tags
   const filteredItems = useMemo(() => {
     let results = sillinessItems;
@@ -192,12 +326,10 @@ export default function SillinessPage() {
 
   return (
     <div style={pageStyle}>
-      <Header />
+      <Header categories={[]} activeCategory="" setActiveCategory={() => {}} />
       
       {/* Controls Container */}
       <div style={controlsContainerStyle}>
-        {/* Remove duplicate Filter Buttons */}
-        
         {/* Search Input */}
         <input
           type="search"
@@ -279,40 +411,40 @@ export default function SillinessPage() {
       {/* Silliness Grid */}
       <div style={gridContainerStyle}>
         <AnimatePresence>
-          {filteredItems.map(item => (
-            <motion.div
-              key={item.id}
-              layout
-              initial={{ opacity: 0 }}
+          {filteredItems.length > 0 ? (
+            filteredItems.map(item => (
+              <motion.div 
+                key={item.id}
+                layout
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <SillinessCard 
+                  item={item} 
+                  onTagClick={handleTagClick} 
+                  selectedTags={selectedTags}
+                />
+              </motion.div>
+            ))
+          ) : (
+            <motion.div 
+              initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              style={{
+                gridColumn: '1 / -1',
+                textAlign: 'center',
+                padding: '40px',
+                color: '#888'
+              }}
             >
-              <SillinessCard 
-                item={item} 
-                onTagClick={handleTagClick}
-                selectedTags={selectedTags}
-              />
+              <h3 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>No silly content found</h3>
+              <p>Try adjusting your search or removing tag filters.</p>
             </motion.div>
-          ))}
+          )}
         </AnimatePresence>
       </div>
-      
-      {/* No results message */}
-      {filteredItems.length === 0 && (
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }}
-          style={{
-            textAlign: 'center',
-            padding: '40px',
-            color: '#888'
-          }}
-        >
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>No silliness found</h3>
-          <p>Try adjusting your search or filters.</p>
-        </motion.div>
-      )}
       
       {/* Footer */}
       <footer style={footerStyle}>
@@ -333,140 +465,4 @@ export default function SillinessPage() {
       </footer>
     </div>
   );
-}
-
-// Silliness Card Component
-interface SillinessCardProps {
-  item: {
-    id: string;
-    title: string;
-    description: string;
-    link: string;
-    tags: string[];
-    date: string;
-  };
-  onTagClick: (tag: string) => void;
-  selectedTags: string[];
-}
-
-const SillinessCard: React.FC<SillinessCardProps> = ({ item, onTagClick, selectedTags }) => {
-  // Format date function
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      return dateString; // Return original string if invalid
-    }
-    
-    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
-  };
-  
-  // CSS styles for title with truncation
-  const titleStyle = {
-    fontSize: '1.1rem',
-    fontWeight: 'bold',
-    color: '#e0e0e0',
-    marginBottom: '8px',
-    lineHeight: '1.3',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box' as const,
-    WebkitLineClamp: 2, // Limit to 2 lines
-    WebkitBoxOrient: 'vertical' as const,
-    maxHeight: '2.8rem', // 2 lines * 1.4 line-height
-  };
-  
-  // CSS for description with truncation
-  const descriptionStyle = {
-    fontSize: '0.9rem',
-    color: '#aaa',
-    marginBottom: '12px',
-    lineHeight: '1.5',
-    flex: '1 0 auto',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box' as const,
-    WebkitLineClamp: 3, // Limit to 3 lines
-    WebkitBoxOrient: 'vertical' as const,
-  };
-  
-  return (
-    <div style={{
-      backgroundColor: '#252830',
-      borderRadius: '12px',
-      overflow: 'hidden',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column' as const,
-      border: '1px solid #383b42',
-      transition: 'all 0.2s ease',
-    }}>
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column' as const, height: '100%' }}>
-        {/* Format Date */}
-        <div style={{ marginBottom: '8px', fontSize: '0.8rem', color: '#7d8590', display: 'flex', justifyContent: 'space-between' }}>
-          <span>{formatDate(item.date)}</span>
-        </div>
-        
-        {/* Title - link to original content */}
-        <h3 style={titleStyle}>
-          <a 
-            href={item.link} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{ 
-              color: '#f97316', 
-              textDecoration: 'none',
-              transition: 'color 0.2s ease',
-            }}
-            onMouseOver={(e) => e.currentTarget.style.color = '#fb923c'}
-            onMouseOut={(e) => e.currentTarget.style.color = '#f97316'}
-            title={item.title} // Add title for tooltip on hover
-          >
-            {item.title}
-          </a>
-        </h3>
-        
-        {/* Description */}
-        <p style={descriptionStyle} title={item.description}>
-          {item.description}
-        </p>
-        
-        {/* Tags */}
-        <div style={{ 
-          display: 'flex', 
-          flexWrap: 'wrap' as const, 
-          gap: '6px',
-          marginTop: 'auto',
-          paddingTop: '12px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-          minHeight: '36px' // Ensure consistent height
-        }}>
-          {item.tags.map((tag, index) => (
-            <span 
-              key={index}
-              style={{
-                padding: '3px 8px',
-                borderRadius: '4px',
-                backgroundColor: selectedTags.includes(tag) ? 'rgba(249, 115, 22, 0.3)' : 'rgba(249, 115, 22, 0.1)',
-                color: '#f97316',
-                fontSize: '0.75rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'inline-flex',
-                alignItems: 'center',
-                height: '24px' // Fixed height for consistency
-              }}
-              onClick={() => onTagClick(tag)}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = selectedTags.includes(tag) ? 'rgba(249, 115, 22, 0.4)' : 'rgba(249, 115, 22, 0.2)'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = selectedTags.includes(tag) ? 'rgba(249, 115, 22, 0.3)' : 'rgba(249, 115, 22, 0.1)'}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}; 
+} 

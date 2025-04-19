@@ -4,6 +4,13 @@ import Logo from './Logo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+// Define props interface
+interface HeaderProps {
+  categories: string[];
+  activeCategory: string;
+  setActiveCategory: React.Dispatch<React.SetStateAction<string>>;
+}
+
 // Navigation styles
 const navStyle = {
   display: 'flex',
@@ -36,7 +43,39 @@ const activeLinkStyle = {
   boxShadow: 'inset 0 -3px 0 #f97316',
 };
 
-const Header: React.FC = () => {
+// Category button container style
+const categoryNavStyle = {
+  display: 'flex',
+  flexWrap: 'wrap' as const,
+  justifyContent: 'center',
+  gap: '8px',
+  marginTop: '20px',
+  marginBottom: '20px',
+  padding: '0 15px',
+};
+
+// Category button style
+const categoryButtonStyle = {
+  padding: '6px 14px',
+  borderRadius: '16px',
+  border: '1px solid #444',
+  background: '#2a2d31',
+  color: '#ccc',
+  cursor: 'pointer',
+  fontSize: '0.85rem',
+  transition: 'all 0.2s ease',
+};
+
+// Active category button style
+const activeCategoryButtonStyle = {
+  ...categoryButtonStyle,
+  background: '#f97316', // Use accent color for active
+  color: '#111',
+  border: '1px solid #f97316',
+  fontWeight: 'bold',
+};
+
+const Header: React.FC<HeaderProps> = ({ categories, activeCategory, setActiveCategory }) => {
   const pathname = usePathname() || '';
   
   // Determine active link
@@ -98,6 +137,27 @@ const Header: React.FC = () => {
           Simulated Silliness
         </Link>
       </nav>
+      
+      {/* Category Navigation (Only shown on AI News page) */}
+      {pathname === '/' && (
+        <nav style={categoryNavStyle}>
+          {categories.map((category) => (
+            <button
+              key={category}
+              style={category === activeCategory ? activeCategoryButtonStyle : categoryButtonStyle}
+              onClick={() => setActiveCategory(category)}
+              onMouseOver={(e) => {
+                if (category !== activeCategory) e.currentTarget.style.backgroundColor = '#3a3d41';
+              }}
+              onMouseOut={(e) => {
+                if (category !== activeCategory) e.currentTarget.style.backgroundColor = '#2a2d31';
+              }}
+            >
+              {category}
+            </button>
+          ))}
+        </nav>
+      )}
     </>
   );
 };

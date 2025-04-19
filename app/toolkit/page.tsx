@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { toolkitItems, ToolkitItem } from '../../data/toolkitData';
 import Header from '../../components/Header';
 import { pageStyle, gridStyle } from '../../styles/styles';
-import { categories } from '../../data/newsData';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Type definitions with colors
@@ -158,7 +157,6 @@ const gridContainerStyle = {
 export default function ToolkitPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [activeCategory, setActiveCategory] = useState('AI Toolkit');
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<ToolkitItem | null>(null);
@@ -178,17 +176,6 @@ export default function ToolkitPage() {
     
     return counts;
   }, []);
-
-  // Handle category change
-  const handleCategoryChange = (category: string) => {
-    if (category === 'AI News') {
-      window.location.href = `/`;
-      return;
-    } else if (category === 'Simulated Silliness') {
-      window.location.href = `/silliness`;
-      return;
-    }
-  };
 
   // Search debounce effect
   useEffect(() => {
@@ -312,7 +299,7 @@ export default function ToolkitPage() {
 
   return (
     <div style={pageStyle}>
-      <Header />
+      <Header categories={[]} activeCategory="" setActiveCategory={() => {}} />
       
       {/* Controls Container */}
       <div style={controlsContainerStyle}>
@@ -512,6 +499,38 @@ const ToolkitCard: React.FC<ToolkitCardProps> = ({ item, onTagClick, onViewDetai
     WebkitBoxOrient: 'vertical' as const,
   };
 
+  // Style for Developer info
+  const developerStyle = {
+    fontSize: '0.8rem',
+    color: '#888',
+    marginBottom: '8px',
+    marginTop: '4px',
+  };
+
+  // Style for Key Features section
+  const featuresContainerStyle = {
+    marginTop: '12px',
+    marginBottom: '8px',
+  };
+
+  const featuresTitleStyle = {
+    fontSize: '0.85rem',
+    fontWeight: '600' as const,
+    color: '#bbb',
+    marginBottom: '6px',
+  };
+
+  const featureTagStyle = {
+    display: 'inline-block',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    color: '#aaa',
+    fontSize: '0.75rem',
+    marginRight: '4px',
+    marginBottom: '4px',
+  };
+
   return (
     <div 
       style={{
@@ -578,10 +597,29 @@ const ToolkitCard: React.FC<ToolkitCardProps> = ({ item, onTagClick, onViewDetai
           </a>
         </h3>
         
+        {/* Developer Info */}
+        {item.developer && (
+          <div style={developerStyle}>By: {item.developer}</div>
+        )}
+        
         {/* Description */}
         <p style={descriptionStyle} title={item.description}>
           {item.description}
         </p>
+
+        {/* Key Features */}
+        {item.keyFeatures && item.keyFeatures.length > 0 && (
+          <div style={featuresContainerStyle}>
+            <h4 style={featuresTitleStyle}>Key Features:</h4>
+            <div>
+              {item.keyFeatures.map((feature, index) => (
+                <span key={index} style={featureTagStyle}>
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         
         {/* Footer with tags */}
         <div style={{

@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next'
-import { toolkitItems } from '../data/toolkitData'
+// import { toolkitItems } from '../data/toolkitData'
 
 // Generate current date in the format needed for lastModified
 const currentDate = new Date().toISOString()
