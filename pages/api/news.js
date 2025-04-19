@@ -218,11 +218,6 @@ function getCacheTTL(hoursSincePublication) {
     return CACHE_SETTINGS.NEWS_API.DURATION_EXTENDED;
   }
 }
-
-// Function to generate cache key for news API requests
-
-}
-
 // Run cache cleanup periodically (every hou
 setInterval(() => {
   const removedCount = enhancedCache.cleanupExpired();
