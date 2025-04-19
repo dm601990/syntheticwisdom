@@ -220,11 +220,10 @@ function getCacheTTL(hoursSincePublication) {
 }
 
 // Function to generate cache key for news API requests
-function generateNewsApiCacheKey(query, page, pageSize) {
-  return `news_api:${query}:page${page}:size${pageSize}`;
+
 }
 
-// Run cache cleanup periodically (every hour)
+// Run cache cleanup periodically (every hou
 setInterval(() => {
   const removedCount = enhancedCache.cleanupExpired();
   console.log(`Cache cleanup: removed ${removedCount} expired items`);
