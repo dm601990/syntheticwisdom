@@ -4,11 +4,6 @@ import Logo from './Logo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-// Define props interface
-interface HeaderProps {
-  // No props needed anymore
-}
-
 // Navigation styles
 const navStyle = {
   display: 'flex',
@@ -43,7 +38,7 @@ const activeLinkStyle = {
 
 // Unused styles removed
 
-const Header: React.FC<HeaderProps> = () => {
+const Header = () => {
   const pathname = usePathname() || '';
   
   // Determine active link
