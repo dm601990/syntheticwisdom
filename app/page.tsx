@@ -289,13 +289,13 @@ export default function HomePage() {
     // Start with articles that have a valid category (not null)
     const validArticles = articles.filter(article => article.category);
     
-    // Filter by the active category
-    let results = validArticles.filter(article => article.category === activeCategory);
+    // Return all articles without filtering by category
+    let results = validArticles;
     
     // Then filter by search term if there is one
     if (searchTerm.trim() !== '') {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
-      // Search within the category-filtered results
+      // Search within all valid articles
       results = results.filter(article => 
         article.title.toLowerCase().includes(lowerCaseSearchTerm) || 
         (article.summary && article.summary.toLowerCase().includes(lowerCaseSearchTerm)) ||
@@ -304,7 +304,7 @@ export default function HomePage() {
     }
     
     return results;
-  }, [articles, activeCategory, searchTerm]);
+  }, [articles, searchTerm]);
 
   // Only show the number of articles determined by visibleCount
   const visibleArticles = filteredArticles.slice(0, visibleCount);
@@ -552,9 +552,9 @@ export default function HomePage() {
         {/* Controls Container */}
         <div style={controlsContainerStyle}>
           {/* Search input */}
-          <input
+          <input 
             type="search"
-            placeholder="Search articles..."
+            placeholder="Search articles..." 
             value={searchTerm}
             onChange={handleSearchChange}
             style={searchInputStyle}
