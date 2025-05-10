@@ -8,6 +8,7 @@ import ExpandedNewsCard from '../components/ExpandedNewsCard';
 import NewsletterSignup from '../components/NewsletterSignup';
 import SkeletonCard from '../components/SkeletonCard';
 import { categories as rawCategories } from '../data/newsData';
+import TopicFilter from '../components/TopicFilter';
 import { pageStyle, gridStyle, dividerStyle } from '../styles/styles';
 import { type ApiNewsItem } from '../components/ExpandedNewsCard';
 
@@ -139,11 +140,19 @@ const gridContainerStyle = {
   gap: '24px', // Slightly increase spacing
 };
 
-// Filter out 'All' and 'AI News' and 'Simulated Silliness' categories for the filter buttons on the news page
-const displayCategories = rawCategories.filter(cat => cat && !['All', 'AI News', 'Simulated Silliness'].includes(cat));
+// Define the categories for the filter, aligning with TopicFilter.tsx
+const filterCategories = [
+  { id: 'all', name: 'All AI' },
+  { id: 'tech-research', name: 'Technology & Research' },
+  { id: 'impact-industry', name: 'Impact & Industry' },
+  { id: 'apps-tools', name: 'Applications & Tools' }
+];
+
+// No longer using displayCategories for initializing activeCategory directly with name
+// const displayCategories = rawCategories.filter(cat => cat && !['All', 'AI News', 'Simulated Silliness'].includes(cat));
 
 export default function HomePage() {
-  const [activeCategory, setActiveCategory] = useState<string>(displayCategories[0] || 'Technology & Research');
+  const [activeCategory, setActiveCategory] = useState<string>(filterCategories[0].id); // Use id from filterCategories
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [articles, setArticles] = useState<ApiNewsItem[]>([]);
@@ -270,13 +279,7 @@ export default function HomePage() {
   // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    // Show loading state briefly when searching
-    if (e.target.value !== searchTerm) {
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-      }, 300);
-    }
+    setVisibleCount(INITIAL_VISIBLE_COUNT); // Reset pagination on search
   };
 
   // Handle load more button click
@@ -284,30 +287,24 @@ export default function HomePage() {
     setVisibleCount(prevCount => prevCount + LOAD_MORE_INCREMENT);
   };
 
-  // Filter and process articles based on category and search term
+  // Memoize filtered articles to prevent re-calculation on every render
   const filteredArticles = useMemo(() => {
-    // Start with articles that have a valid category (not null)
-    const validArticles = articles.filter(article => article.category);
-    
-    // Return all articles without filtering by category
-    let results = validArticles;
-    
-    // Then filter by search term if there is one
-    if (searchTerm.trim() !== '') {
-      const lowerCaseSearchTerm = searchTerm.toLowerCase();
-      // Search within all valid articles
-      results = results.filter(article => 
-        article.title.toLowerCase().includes(lowerCaseSearchTerm) || 
-        (article.summary && article.summary.toLowerCase().includes(lowerCaseSearchTerm)) ||
-        (article.keywords && article.keywords.some((kw: string) => kw.toLowerCase().includes(lowerCaseSearchTerm)))
-      );
-    }
-    
-    return results;
-  }, [articles, searchTerm]);
+    return articles
+      .filter(article => {
+        // Category filter
+        const categoryMatch = activeCategory === 'all' || article.category === filterCategories.find(fc => fc.id === activeCategory)?.name;
+        // Search term filter (case-insensitive)
+        const searchMatch = searchTerm === '' || 
+                            article.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            article.summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            article.keywords?.some(keyword => keyword.toLowerCase().includes(searchTerm.toLowerCase()));
+        return categoryMatch && searchMatch;
+      })
+      .slice(0, visibleCount);
+  }, [articles, activeCategory, searchTerm, visibleCount]);
 
   // Only show the number of articles determined by visibleCount
-  const visibleArticles = filteredArticles.slice(0, visibleCount);
+  const visibleArticles = filteredArticles;
   
   // Determine if we should show the Load More button
   const hasMoreArticles = filteredArticles.length > visibleCount;
@@ -342,7 +339,7 @@ export default function HomePage() {
   const handleEntityClick = (entity: string) => {
     console.log("Entity clicked:", entity);
     setSearchTerm(entity); // Set the main search term
-    setActiveCategory('All'); // Reset category filter to 'All'
+    setActiveCategory('all'); // Reset category filter to 'all'
     handleClose(); // Close the modal
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -542,32 +539,20 @@ export default function HomePage() {
     <>
       <style>{globalStyle}</style>
       <div style={pageStyle}>
-        {/* Pass filtered categories to Header */}
-        <Header 
-          categories={displayCategories} 
-          activeCategory={activeCategory} 
-          setActiveCategory={setActiveCategory} 
-        />
+        {/* Header no longer takes category props */}
+        <Header />
         
         {/* Controls Container */}
         <div style={controlsContainerStyle}>
           {/* Search input */}
           <input 
-            type="search"
-            placeholder="Search articles..." 
-            value={searchTerm}
-            onChange={handleSearchChange}
+            type="text" 
+            placeholder="Search articles by title, summary, or keyword..." 
+            value={searchTerm} 
+            onChange={handleSearchChange} 
             style={searchInputStyle}
-            aria-label="Search for news articles"
-            onFocus={(e) => {
-              e.currentTarget.style.boxShadow = '0 3px 12px rgba(42, 157, 143, 0.25)';
-              e.currentTarget.style.borderColor = '#2a9d8f';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-              e.currentTarget.style.borderColor = '#333';
-            }}
           />
+          <TopicFilter currentTopic={activeCategory} onTopicChange={setActiveCategory} />
         </div>
         
         {/* Enhanced Error Message with Retry Button */}
@@ -672,7 +657,7 @@ export default function HomePage() {
         <div style={dividerStyle}></div>
 
         {/* Newsletter Signup Form - Only show if no error */}
-        {!error && <NewsletterSignup categories={displayCategories} />}
+        {!error && <NewsletterSignup categories={filterCategories.map(fc => fc.name)} />}
 
         {/* --- Footer Section --- */}
         <footer style={footerStyle}>

@@ -8,12 +8,10 @@ interface TopicFilterProps {
 const TopicFilter: React.FC<TopicFilterProps> = ({ currentTopic, onTopicChange }) => {
   // Define available topics with friendly names
   const topics = [
-    { id: 'general', name: 'All AI' },
-    { id: 'llm', name: 'Language Models' },
-    { id: 'robotics', name: 'Robotics' },
-    { id: 'ml', name: 'Machine Learning' },
-    { id: 'business', name: 'Business' },
-    { id: 'ethics', name: 'Ethics' }
+    { id: 'all', name: 'All AI' },
+    { id: 'tech-research', name: 'Technology & Research' },
+    { id: 'impact-industry', name: 'Impact & Industry' },
+    { id: 'apps-tools', name: 'Applications & Tools' }
   ];
 
   return (
