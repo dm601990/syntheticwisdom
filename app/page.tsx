@@ -7,7 +7,6 @@ import Header from '../components/Header';
 import ExpandedNewsCard from '../components/ExpandedNewsCard';
 import NewsletterSignup from '../components/NewsletterSignup';
 import SkeletonCard from '../components/SkeletonCard';
-import { categories as rawCategories } from '../data/newsData';
 import TopicFilter from '../components/TopicFilter';
 import { pageStyle, gridStyle, dividerStyle } from '../styles/styles';
 import { type ApiNewsItem } from '../components/ExpandedNewsCard';
