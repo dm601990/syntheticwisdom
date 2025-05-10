@@ -35,7 +35,7 @@ jobs:
         
       - name: Upload Test Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.3
         with:
           name: playwright-report
           path: playwright-report/
@@ -68,7 +68,7 @@ jobs:
         
       - name: Upload Test Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.3
         with:
           name: responsive-test-report
           path: playwright-report/
@@ -116,7 +116,7 @@ jobs:
         run: ls -R results/
         
       - name: Upload Load Test Results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.3
         with:
           name: load-test-results
           path: results/
